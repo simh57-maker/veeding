@@ -1,16 +1,16 @@
 'use client'
 
-import { Video, Download, LogOut, ChevronDown } from 'lucide-react'
-import { useState, useRef } from 'react'
+import { Video, Download, LogOut } from 'lucide-react'
+import { useState } from 'react'
 import { signOut } from 'next-auth/react'
 import { useEditorStore, Resolution } from '@/store/editorStore'
 import ExportModal from './ExportModal'
 import Image from 'next/image'
 
 const RESOLUTIONS: { label: string; value: Resolution }[] = [
-  { label: '1920 × 1080 (Landscape)', value: '1920x1080' },
-  { label: '1200 × 1200 (Square)', value: '1200x1200' },
-  { label: '1080 × 1920 (Portrait)', value: '1080x1920' },
+  { label: '1920 × 1080', value: '1920x1080' },
+  { label: '1200 × 1200', value: '1200x1200' },
+  { label: '1080 × 1920', value: '1080x1920' },
 ]
 
 interface Props {
@@ -18,12 +18,8 @@ interface Props {
 }
 
 export default function TopBar({ user }: Props) {
-  const [resOpen, setResOpen] = useState(false)
   const [showExport, setShowExport] = useState(false)
   const { resolution, setResolution } = useEditorStore()
-  const dropRef = useRef<HTMLDivElement>(null)
-
-  const currentRes = RESOLUTIONS.find((r) => r.value === resolution)
 
   return (
     <>
@@ -36,43 +32,21 @@ export default function TopBar({ user }: Props) {
           <span className="text-white font-bold text-sm tracking-wide">Veeding</span>
         </div>
 
-        {/* Center: Resolution Switcher */}
-        <div className="relative" ref={dropRef}>
-          <button
-            onClick={() => setResOpen((v) => !v)}
-            className="flex items-center gap-2 bg-[#1E1E1E] hover:bg-[#333] border border-[#444] rounded-lg px-3 py-1.5 text-sm text-[#E0E0E0] transition-colors"
-          >
-            <span>{currentRes?.label ?? resolution}</span>
-            <ChevronDown className="w-3.5 h-3.5 text-[#888]" />
-          </button>
+        {/* Center: Resolution select */}
+        <select
+          value={resolution}
+          onChange={(e) => setResolution(e.target.value as Resolution)}
+          className="bg-[#1E1E1E] border border-[#444] text-[#E0E0E0] text-sm rounded-lg px-3 py-1.5 outline-none cursor-pointer hover:border-[#666] transition-colors"
+        >
+          {RESOLUTIONS.map((r) => (
+            <option key={r.value} value={r.value}>{r.label}</option>
+          ))}
+        </select>
 
-          {resOpen && (
-            <div className="absolute top-full left-0 mt-1 w-56 bg-[#2C2C2C] border border-[#444] rounded-xl shadow-2xl overflow-hidden z-50">
-              {RESOLUTIONS.map((r) => (
-                <button
-                  key={r.value}
-                  onClick={() => { setResolution(r.value); setResOpen(false) }}
-                  className={`w-full text-left px-4 py-2.5 text-sm transition-colors hover:bg-[#333] ${
-                    r.value === resolution ? 'text-[#0D99FF]' : 'text-[#E0E0E0]'
-                  }`}
-                >
-                  {r.label}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Right: user + Export + Logout */}
+        {/* Right */}
         <div className="flex items-center gap-3">
           {user.image && (
-            <Image
-              src={user.image}
-              alt={user.name}
-              width={24}
-              height={24}
-              className="rounded-full"
-            />
+            <Image src={user.image} alt={user.name} width={24} height={24} className="rounded-full" />
           )}
           <span className="text-[#555] text-xs hidden sm:block">{user.email}</span>
           <button
