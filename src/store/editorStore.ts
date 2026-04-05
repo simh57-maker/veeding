@@ -160,23 +160,19 @@ export const useEditorStore = create<EditorState>((set, get) => ({
 
     if (bannerAsset.alphaBounds) {
       const { x, y, width, height } = bannerAsset.alphaBounds
-      // 배너 이미지 크기 = 캔버스 크기
-      const canvasW = bannerAsset.width
-      const canvasH = bannerAsset.height
 
-      const ax = x
-      const ay = y
-      const aw = width
-      const ah = height
-      void canvasW; void canvasH
+      // ① 영상 높이를 알파 영역 높이에 맞추고 비율 유지 (height-fit)
+      const scale = height / videoAsset.height
 
-      const scale = Math.max(aw / videoAsset.width, ah / videoAsset.height)
+      // ② 영상 중심 = 알파 영역 중심
+      const centerX = x + width / 2
+      const centerY = y + height / 2
 
       set({
         activeVideo: {
           ...get().activeVideo!,
-          x: ax + aw / 2,
-          y: ay + ah / 2,
+          x: centerX,
+          y: centerY,
           scaleX: scale,
           scaleY: scale,
         },

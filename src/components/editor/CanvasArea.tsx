@@ -1,43 +1,101 @@
 'use client'
 
-import { useEffect, useRef, useCallback } from 'react'
+import { useEffect, useRef, useCallback, useState } from 'react'
 import { useEditorStore } from '@/store/editorStore'
 
 const CANVAS_PADDING = 40
+const HANDLE_SIZE = 8  // 코너 핸들 반지름 (px, 캔버스 좌표)
+
+type DragMode =
+  | { type: 'move' }
+  | { type: 'resize'; corner: 'tl' | 'tr' | 'bl' | 'br' }
+
+interface DragState {
+  mode: DragMode
+  startMouseX: number  // 화면 px
+  startMouseY: number
+  startX: number       // 캔버스 px (영상 중심)
+  startY: number
+  startScaleX: number
+  startScaleY: number
+  startW: number       // 영상 렌더 너비 = videoAsset.width * scaleX
+  startH: number
+}
 
 export default function CanvasArea() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const videoRef = useRef<HTMLVideoElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const animFrameRef = useRef<number>(0)
+  const dragRef = useRef<DragState | null>(null)
+  const [cursor, setCursor] = useState<string>('default')
 
   const {
-    activeBanner,
-    activeVideo,
-    bannerAssets,
-    videoAssets,
-    currentTime,
-    isPlaying,
-    setCurrentTime,
-    setSelectedLayer,
+    activeBanner, activeVideo,
+    bannerAssets, videoAssets,
+    currentTime, isPlaying,
+    setCurrentTime, setSelectedLayer, updateVideoClip,
   } = useEditorStore()
 
-  // 캔버스 크기 = 배너 이미지의 실제 크기
   const bannerAsset = activeBanner ? bannerAssets.find((b) => b.id === activeBanner.assetId) : null
-  const canvasW = bannerAsset?.width ?? 1920
+  const videoAsset  = activeVideo  ? videoAssets.find((v)  => v.id === activeVideo.assetId)  : null
+
+  const canvasW = bannerAsset?.width  ?? 1920
   const canvasH = bannerAsset?.height ?? 1080
 
+  // ── 스케일 계산 ──────────────────────────────────────────
   const getScale = useCallback(() => {
-    const container = containerRef.current
-    if (!container) return 1
-    const availW = container.clientWidth - CANVAS_PADDING * 2
-    const availH = container.clientHeight - CANVAS_PADDING * 2
+    const c = containerRef.current
+    if (!c) return 1
+    const availW = c.clientWidth  - CANVAS_PADDING * 2
+    const availH = c.clientHeight - CANVAS_PADDING * 2
     return Math.min(availW / canvasW, availH / canvasH, 1)
   }, [canvasW, canvasH])
 
+  // ── 마우스 → 캔버스 좌표 ────────────────────────────────
+  const toCanvas = useCallback((ex: number, ey: number) => {
+    const canvas = canvasRef.current
+    if (!canvas) return { x: 0, y: 0 }
+    const rect  = canvas.getBoundingClientRect()
+    const scale = getScale()
+    return {
+      x: (ex - rect.left)  / scale,
+      y: (ey - rect.top)   / scale,
+    }
+  }, [getScale])
+
+  // ── 영상 렌더 박스 ───────────────────────────────────────
+  const getVideoBox = useCallback(() => {
+    if (!activeVideo || !videoAsset) return null
+    const rw = videoAsset.width  * activeVideo.scaleX
+    const rh = videoAsset.height * activeVideo.scaleY
+    return {
+      l: activeVideo.x - rw / 2,
+      t: activeVideo.y - rh / 2,
+      r: activeVideo.x + rw / 2,
+      b: activeVideo.y + rh / 2,
+      cx: activeVideo.x,
+      cy: activeVideo.y,
+      rw, rh,
+    }
+  }, [activeVideo, videoAsset])
+
+  // ── 코너 핸들 위치 4개 ────────────────────────────────────
+  const getHandles = useCallback(() => {
+    const box = getVideoBox()
+    if (!box) return []
+    return [
+      { id: 'tl' as const, x: box.l, y: box.t },
+      { id: 'tr' as const, x: box.r, y: box.t },
+      { id: 'bl' as const, x: box.l, y: box.b },
+      { id: 'br' as const, x: box.r, y: box.b },
+    ]
+  }, [getVideoBox])
+
+  // ── 그리기 ───────────────────────────────────────────────
   const drawFrame = useCallback(() => {
     const canvas = canvasRef.current
-    const video = videoRef.current
+    const video  = videoRef.current
     if (!canvas) return
     const ctx = canvas.getContext('2d')
     if (!ctx) return
@@ -45,34 +103,47 @@ export default function CanvasArea() {
     ctx.clearRect(0, 0, canvasW, canvasH)
     drawCheckerboard(ctx, canvasW, canvasH)
 
-    // 영상 레이어 (뒤)
-    if (activeVideo && video && videoAssets.find((v) => v.id === activeVideo.assetId)) {
-      const vAsset = videoAssets.find((v) => v.id === activeVideo.assetId)!
-      const sw = vAsset.width * activeVideo.scaleX
-      const sh = vAsset.height * activeVideo.scaleY
-      ctx.drawImage(video, activeVideo.x - sw / 2, activeVideo.y - sh / 2, sw, sh)
+    // 영상 레이어
+    if (activeVideo && video && videoAsset) {
+      const { rw, rh, l, t } = getVideoBox()!
+      ctx.drawImage(video, l, t, rw, rh)
     }
 
-    // 배너 레이어 (앞)
-    if (bannerAsset) {
-      const bw = bannerAsset.width * activeBanner!.scaleX
-      const bh = bannerAsset.height * activeBanner!.scaleY
+    // 배너 레이어
+    if (bannerAsset && activeBanner) {
+      const bw = bannerAsset.width  * activeBanner.scaleX
+      const bh = bannerAsset.height * activeBanner.scaleY
       const img = document.querySelector<HTMLImageElement>(`[data-asset="${bannerAsset.id}"]`)
-      if (img) {
-        ctx.drawImage(img, activeBanner!.x - bw / 2, activeBanner!.y - bh / 2, bw, bh)
+      if (img) ctx.drawImage(img, activeBanner.x - bw / 2, activeBanner.y - bh / 2, bw, bh)
+    }
+
+    // 영상 선택 핸들 (영상 레이어 선택 시)
+    if (activeVideo && videoAsset) {
+      const box = getVideoBox()!
+      // 선택 테두리
+      ctx.strokeStyle = 'rgba(13, 153, 255, 0.8)'
+      ctx.lineWidth   = 2
+      ctx.setLineDash([6, 3])
+      ctx.strokeRect(box.l, box.t, box.rw, box.rh)
+      ctx.setLineDash([])
+
+      // 코너 핸들
+      for (const h of getHandles()) {
+        ctx.fillStyle   = '#fff'
+        ctx.strokeStyle = '#0D99FF'
+        ctx.lineWidth   = 1.5
+        ctx.fillRect   (h.x - HANDLE_SIZE / 2, h.y - HANDLE_SIZE / 2, HANDLE_SIZE, HANDLE_SIZE)
+        ctx.strokeRect (h.x - HANDLE_SIZE / 2, h.y - HANDLE_SIZE / 2, HANDLE_SIZE, HANDLE_SIZE)
       }
     }
-  }, [activeVideo, activeBanner, bannerAsset, videoAssets, canvasW, canvasH])
+  }, [activeVideo, activeBanner, bannerAsset, videoAsset, canvasW, canvasH, getVideoBox, getHandles])
 
-  // 애니메이션 루프
+  // ── 애니메이션 루프 ──────────────────────────────────────
   useEffect(() => {
     const video = videoRef.current
-    if (!video || !activeVideo) return
+    if (!video || !activeVideo || !videoAsset) return
 
-    const asset = videoAssets.find((v) => v.id === activeVideo.assetId)
-    if (!asset) return
-
-    if (video.src !== asset.url) video.src = asset.url
+    if (video.src !== videoAsset.url) video.src = videoAsset.url
 
     if (isPlaying) {
       video.play()
@@ -88,47 +159,129 @@ export default function CanvasArea() {
       drawFrame()
       cancelAnimationFrame(animFrameRef.current)
     }
-
     return () => cancelAnimationFrame(animFrameRef.current)
-  }, [isPlaying, activeVideo, videoAssets, currentTime, drawFrame, setCurrentTime])
+  }, [isPlaying, activeVideo, videoAsset, currentTime, drawFrame, setCurrentTime])
 
-  useEffect(() => {
-    drawFrame()
-  }, [drawFrame, activeBanner, activeVideo])
+  useEffect(() => { drawFrame() }, [drawFrame, activeBanner, activeVideo])
 
-  function handleCanvasClick(e: React.MouseEvent<HTMLCanvasElement>) {
-    const scale = getScale()
-    const rect = canvasRef.current!.getBoundingClientRect()
-    const x = (e.clientX - rect.left) / scale
-    const y = (e.clientY - rect.top) / scale
+  // ── 히트 테스트 ──────────────────────────────────────────
+  function hitHandle(cx: number, cy: number) {
+    if (!activeVideo) return null
+    for (const h of getHandles()) {
+      if (Math.abs(cx - h.x) <= HANDLE_SIZE && Math.abs(cy - h.y) <= HANDLE_SIZE) return h.id
+    }
+    return null
+  }
 
-    if (bannerAsset) {
-      const bw = bannerAsset.width * activeBanner!.scaleX
-      const bh = bannerAsset.height * activeBanner!.scaleY
-      if (x >= activeBanner!.x - bw / 2 && x <= activeBanner!.x + bw / 2 &&
-          y >= activeBanner!.y - bh / 2 && y <= activeBanner!.y + bh / 2) {
-        setSelectedLayer('banner')
-        return
+  function hitVideoBox(cx: number, cy: number) {
+    const box = getVideoBox()
+    if (!box) return false
+    return cx >= box.l && cx <= box.r && cy >= box.t && cy <= box.b
+  }
+
+  // ── 마우스 이벤트 ────────────────────────────────────────
+  function handleMouseDown(e: React.MouseEvent<HTMLCanvasElement>) {
+    if (!activeVideo || !videoAsset) return
+    const { x, y } = toCanvas(e.clientX, e.clientY)
+
+    const corner = hitHandle(x, y)
+    if (corner) {
+      const box = getVideoBox()!
+      dragRef.current = {
+        mode: { type: 'resize', corner },
+        startMouseX: e.clientX,
+        startMouseY: e.clientY,
+        startX:      activeVideo.x,
+        startY:      activeVideo.y,
+        startScaleX: activeVideo.scaleX,
+        startScaleY: activeVideo.scaleY,
+        startW:      box.rw,
+        startH:      box.rh,
       }
+      setSelectedLayer('video')
+      return
     }
 
-    if (activeVideo) {
-      const vAsset = videoAssets.find((v) => v.id === activeVideo.assetId)
-      if (vAsset) {
-        const vw = vAsset.width * activeVideo.scaleX
-        const vh = vAsset.height * activeVideo.scaleY
-        if (x >= activeVideo.x - vw / 2 && x <= activeVideo.x + vw / 2 &&
-            y >= activeVideo.y - vh / 2 && y <= activeVideo.y + vh / 2) {
-          setSelectedLayer('video')
-          return
-        }
+    if (hitVideoBox(x, y)) {
+      dragRef.current = {
+        mode: { type: 'move' },
+        startMouseX: e.clientX,
+        startMouseY: e.clientY,
+        startX:      activeVideo.x,
+        startY:      activeVideo.y,
+        startScaleX: activeVideo.scaleX,
+        startScaleY: activeVideo.scaleY,
+        startW:      0,
+        startH:      0,
       }
+      setSelectedLayer('video')
+      return
     }
 
     setSelectedLayer(null)
   }
 
-  const scale = getScale()
+  function handleMouseMove(e: React.MouseEvent<HTMLCanvasElement>) {
+    const { x, y } = toCanvas(e.clientX, e.clientY)
+    const scale = getScale()
+
+    if (!dragRef.current) {
+      // 커서 모양 업데이트
+      if (activeVideo) {
+        const corner = hitHandle(x, y)
+        if (corner === 'tl' || corner === 'br') { setCursor('nwse-resize'); return }
+        if (corner === 'tr' || corner === 'bl') { setCursor('nesw-resize'); return }
+        if (hitVideoBox(x, y)) { setCursor('move'); return }
+      }
+      setCursor('default')
+      return
+    }
+
+    const drag = dragRef.current
+    const dx = (e.clientX - drag.startMouseX) / scale
+    const dy = (e.clientY - drag.startMouseY) / scale
+
+    if (drag.mode.type === 'move') {
+      updateVideoClip({
+        x: drag.startX + dx,
+        y: drag.startY + dy,
+      })
+    } else {
+      // 리사이즈 — 비율 유지, 드래그한 쪽 코너 기준
+      const corner = drag.mode.corner
+      const aspect = drag.startW / drag.startH  // 원본 비율
+
+      // 드래그 델타를 코너 방향으로 환산
+      let delta = 0
+      if (corner === 'br') delta = (dx + dy) / 2
+      if (corner === 'bl') delta = (-dx + dy) / 2
+      if (corner === 'tr') delta = (dx - dy) / 2
+      if (corner === 'tl') delta = (-dx - dy) / 2
+
+      const newH = Math.max(50, drag.startH + delta)
+      const newW = newH * aspect
+      const newScale = newH / (videoAsset?.height ?? 1)
+
+      // 중심은 반대쪽 코너를 고정하여 이동
+      let newCx = drag.startX
+      let newCy = drag.startY
+      const dw = (newW - drag.startW) / 2
+      const dh = (newH - drag.startH) / 2
+
+      if (corner === 'br') { newCx = drag.startX + dw; newCy = drag.startY + dh }
+      if (corner === 'bl') { newCx = drag.startX - dw; newCy = drag.startY + dh }
+      if (corner === 'tr') { newCx = drag.startX + dw; newCy = drag.startY - dh }
+      if (corner === 'tl') { newCx = drag.startX - dw; newCy = drag.startY - dh }
+
+      updateVideoClip({ x: newCx, y: newCy, scaleX: newScale, scaleY: newScale })
+    }
+
+    drawFrame()
+  }
+
+  function handleMouseUp() {
+    dragRef.current = null
+  }
 
   return (
     <div
@@ -144,13 +297,11 @@ export default function CanvasArea() {
         ))}
       </div>
 
-      {/* 히든 비디오 */}
       <video ref={videoRef} className="hidden" playsInline muted preload="auto" />
 
-      {/* 캔버스 */}
       <div
         style={{
-          transform: `scale(${scale})`,
+          transform: `scale(${getScale()})`,
           transformOrigin: 'center center',
           boxShadow: '0 8px 40px rgba(0,0,0,0.6)',
         }}
@@ -159,16 +310,18 @@ export default function CanvasArea() {
           ref={canvasRef}
           width={canvasW}
           height={canvasH}
-          onClick={handleCanvasClick}
-          className="cursor-crosshair block"
-          style={{ background: '#000' }}
+          style={{ display: 'block', background: '#000', cursor }}
+          onMouseDown={handleMouseDown}
+          onMouseMove={handleMouseMove}
+          onMouseUp={handleMouseUp}
+          onMouseLeave={handleMouseUp}
         />
       </div>
 
       {!activeBanner && !activeVideo && (
-        <div className="absolute flex flex-col items-center justify-center text-[#444] pointer-events-none">
-          <div className="text-4xl mb-2">🎬</div>
-          <p className="text-sm">배너를 업로드하면 캔버스 크기가 자동으로 설정됩니다</p>
+        <div className="absolute flex flex-col items-center justify-center text-[#444] pointer-events-none gap-2">
+          <div className="text-4xl">🎬</div>
+          <p className="text-sm">배너를 업로드하고 세트를 등록하세요</p>
         </div>
       )}
     </div>
