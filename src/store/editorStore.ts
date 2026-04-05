@@ -131,7 +131,15 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   addVideoAsset: (asset) =>
     set((s) => ({ videoAssets: [...s.videoAssets, asset] })),
 
-  setActiveBanner: (clip) => set({ activeBanner: clip }),
+  setActiveBanner: (clip) => {
+    if (!clip) { set({ activeBanner: null }); return }
+    const { bannerAssets } = get()
+    const asset = bannerAssets.find((b) => b.id === clip.assetId)
+    const centered: BannerClip = asset
+      ? { ...clip, x: asset.width / 2, y: asset.height / 2, scaleX: 1, scaleY: 1 }
+      : clip
+    set({ activeBanner: centered })
+  },
   setActiveVideo: (clip) => set({ activeVideo: clip }),
   setSelectedLayer: (l) => set({ selectedLayer: l }),
 

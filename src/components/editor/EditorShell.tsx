@@ -13,22 +13,17 @@ interface Props {
 export default function EditorShell({ user }: Props) {
   return (
     <div className="flex flex-col h-screen w-screen overflow-hidden bg-[#1E1E1E]">
-      {/* Top Bar */}
+      {/* Top Bar — 전체 너비 */}
       <TopBar user={user} />
 
-      {/* Main 3-column layout */}
-      <div className="flex flex-1 overflow-hidden">
-        {/* Left Sidebar */}
+      {/* 사이드바 + 캔버스 + 우측패널 */}
+      <div className="flex flex-1 overflow-hidden min-w-0">
         <LeftSidebar />
-
-        {/* Canvas */}
         <CanvasArea />
-
-        {/* Right Properties Panel */}
         <RightPanel />
       </div>
 
-      {/* Bottom Timeline */}
+      {/* Timeline — LeftSidebar 너비만큼 왼쪽 여백을 맞춤 */}
       <Timeline />
     </div>
   )
