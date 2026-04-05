@@ -2,10 +2,10 @@
 
 import { Video, Download, LogOut, ChevronDown } from 'lucide-react'
 import { useState, useRef } from 'react'
+import { signOut } from 'next-auth/react'
 import { useEditorStore, Resolution } from '@/store/editorStore'
-import { createClient } from '@/lib/supabase/client'
-import { useRouter } from 'next/navigation'
 import ExportModal from './ExportModal'
+import Image from 'next/image'
 
 const RESOLUTIONS: { label: string; value: Resolution }[] = [
   { label: '1920 × 1080 (Landscape)', value: '1920x1080' },
@@ -14,21 +14,14 @@ const RESOLUTIONS: { label: string; value: Resolution }[] = [
 ]
 
 interface Props {
-  user: { id: string; email: string }
+  user: { id: string; email: string; name: string; image: string }
 }
 
 export default function TopBar({ user }: Props) {
   const [resOpen, setResOpen] = useState(false)
   const [showExport, setShowExport] = useState(false)
   const { resolution, setResolution } = useEditorStore()
-  const router = useRouter()
   const dropRef = useRef<HTMLDivElement>(null)
-
-  async function handleLogout() {
-    const supabase = createClient()
-    await supabase.auth.signOut()
-    router.push('/login')
-  }
 
   const currentRes = RESOLUTIONS.find((r) => r.value === resolution)
 
@@ -70,8 +63,17 @@ export default function TopBar({ user }: Props) {
           )}
         </div>
 
-        {/* Right: Export + Logout */}
+        {/* Right: user + Export + Logout */}
         <div className="flex items-center gap-3">
+          {user.image && (
+            <Image
+              src={user.image}
+              alt={user.name}
+              width={24}
+              height={24}
+              className="rounded-full"
+            />
+          )}
           <span className="text-[#555] text-xs hidden sm:block">{user.email}</span>
           <button
             onClick={() => setShowExport(true)}
@@ -81,7 +83,7 @@ export default function TopBar({ user }: Props) {
             Export
           </button>
           <button
-            onClick={handleLogout}
+            onClick={() => signOut({ callbackUrl: '/login' })}
             className="p-1.5 rounded-lg hover:bg-[#333] text-[#888] hover:text-[#E0E0E0] transition-colors"
             title="Sign out"
           >

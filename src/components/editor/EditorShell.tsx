@@ -7,7 +7,7 @@ import RightPanel from './RightPanel'
 import Timeline from './Timeline'
 
 interface Props {
-  user: { id: string; email: string }
+  user: { id: string; email: string; name: string; image: string }
 }
 
 export default function EditorShell({ user }: Props) {

@@ -1,19 +1,9 @@
 'use client'
 
-import { createClient } from '@/lib/supabase/client'
+import { signIn } from 'next-auth/react'
 import { Video } from 'lucide-react'
 
 export default function LoginPage() {
-  async function handleGoogleLogin() {
-    const supabase = createClient()
-    await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
-      },
-    })
-  }
-
   return (
     <div className="min-h-screen flex items-center justify-center bg-[#1E1E1E]">
       <div className="bg-[#2C2C2C] border border-[#333] rounded-2xl p-10 w-full max-w-sm flex flex-col items-center gap-6 shadow-2xl">
@@ -30,7 +20,7 @@ export default function LoginPage() {
         </div>
 
         <button
-          onClick={handleGoogleLogin}
+          onClick={() => signIn('google', { callbackUrl: '/editor' })}
           className="w-full flex items-center justify-center gap-3 bg-white hover:bg-gray-100 text-gray-800 font-medium py-3 px-4 rounded-xl transition-colors"
         >
           <svg className="w-5 h-5" viewBox="0 0 24 24">

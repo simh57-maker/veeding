@@ -1,42 +1,30 @@
 import { redirect } from 'next/navigation'
-import { createClient } from '@/lib/supabase/server'
+import { auth } from '@/auth'
 import AdminDashboard from './AdminDashboard'
 
 export default async function AdminPage() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const session = await auth()
 
-  if (!user) redirect('/login')
+  if (!session?.user?.email) redirect('/login')
 
-  // Check admin role
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('role')
-    .eq('id', user.id)
-    .single()
+  const adminEmail = process.env.ADMIN_EMAIL
+  if (session.user.email !== adminEmail) redirect('/editor')
 
-  if (profile?.role !== 'admin') {
-    redirect('/editor')
+  // Fetch login logs from API
+  const baseUrl = process.env.NEXTAUTH_URL ?? 'http://localhost:3000'
+  let logs: { email: string; name: string; image: string; loggedInAt: string }[] = []
+  try {
+    const res = await fetch(`${baseUrl}/api/log-login`, { cache: 'no-store' })
+    const data = await res.json()
+    logs = data.logs ?? []
+  } catch {
+    logs = []
   }
-
-  // Fetch all users
-  const { data: users } = await supabase
-    .from('profiles')
-    .select('id, email, full_name, role, created_at')
-    .order('created_at', { ascending: false })
-
-  // Fetch login history
-  const { data: loginHistory } = await supabase
-    .from('login_history')
-    .select('id, email, provider, logged_in_at, user_id')
-    .order('logged_in_at', { ascending: false })
-    .limit(100)
 
   return (
     <AdminDashboard
-      users={users ?? []}
-      loginHistory={loginHistory ?? []}
-      currentUser={{ id: user.id, email: user.email ?? '' }}
+      logs={logs}
+      currentUser={{ email: session.user.email, name: session.user.name ?? '' }}
     />
   )
 }

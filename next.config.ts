@@ -13,6 +13,14 @@ const nextConfig: NextConfig = {
       },
     ]
   },
+  images: {
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'lh3.googleusercontent.com', // Google profile images
+      },
+    ],
+  },
 }
 
 export default nextConfig
