@@ -19,9 +19,12 @@ interface ExportJob {
 }
 
 export default function ExportModal({ onClose }: Props) {
-  const { resolution, activeVideo, activeBanner, videoAssets, bannerAssets, projectDuration, quality, sets } = useEditorStore()
+  const { activeVideo, activeBanner, videoAssets, bannerAssets, projectDuration, quality, sets } = useEditorStore()
 
-  const [resW, resH] = resolution.split('x').map(Number)
+  // 캔버스 크기 = 현재 활성 배너의 실제 크기
+  const activeBannerAsset = activeBanner ? bannerAssets.find((b) => b.id === activeBanner.assetId) : null
+  const resW = activeBannerAsset?.width ?? 1920
+  const resH = activeBannerAsset?.height ?? 1080
 
   // 선택 모드: 'current' | 세트 id들
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => {
@@ -69,20 +72,22 @@ export default function ExportModal({ onClose }: Props) {
     const inPoint = video!.inPoint
     const speedFilter = video!.speed !== 1 ? `setpts=${(1 / video!.speed).toFixed(4)}*PTS,` : ''
 
-    let filterComplex = `[0:v]${speedFilter}scale=${resW}:${resH}:force_original_aspect_ratio=increase,crop=${resW}:${resH}[vid]`
+    // 세트별 배너 크기를 출력 해상도로 사용
+    const bannerAsset = banner ? bannerAssets.find((b) => b.id === banner.assetId) : null
+    const outW = bannerAsset?.width ?? resW
+    const outH = bannerAsset?.height ?? resH
+
+    let filterComplex = `[0:v]${speedFilter}scale=${outW}:${outH}:force_original_aspect_ratio=increase,crop=${outW}:${outH}[vid]`
     const inputs = ['-ss', String(inPoint), '-i', 'input.mp4']
     const maps = ['-map', '[vid]']
 
-    if (banner) {
-      const bannerAsset = bannerAssets.find((b) => b.id === banner.assetId)
-      if (bannerAsset) {
-        const bannerData = await fetchFile(bannerAsset.dataUrl)
-        await ffmpeg.writeFile('banner.png', bannerData)
-        filterComplex = `[0:v]${speedFilter}scale=${resW}:${resH}:force_original_aspect_ratio=increase,crop=${resW}:${resH}[vid];[1:v]scale=${resW}:${resH}[banner];[vid][banner]overlay=0:0[out]`
-        inputs.push('-i', 'banner.png')
-        maps.length = 0
-        maps.push('-map', '[out]')
-      }
+    if (bannerAsset) {
+      const bannerData = await fetchFile(bannerAsset.dataUrl)
+      await ffmpeg.writeFile('banner.png', bannerData)
+      filterComplex = `[0:v]${speedFilter}scale=${outW}:${outH}:force_original_aspect_ratio=increase,crop=${outW}:${outH}[vid];[1:v]scale=${outW}:${outH}[banner];[vid][banner]overlay=0:0[out]`
+      inputs.push('-i', 'banner.png')
+      maps.length = 0
+      maps.push('-map', '[out]')
     }
 
     await ffmpeg.exec([
@@ -146,6 +151,11 @@ export default function ExportModal({ onClose }: Props) {
 
           if (!video) throw new Error('영상이 없습니다')
 
+          // 이 세트의 배너 크기 = 출력 해상도
+          const setBannerAsset = banner ? bannerAssets.find((b) => b.id === banner!.assetId) : null
+          const fileW = setBannerAsset?.width ?? resW
+          const fileH = setBannerAsset?.height ?? resH
+
           const filename = `out_${i}.mp4`
           const blob = await renderOne(
             ffmpeg, fetchFile, banner, video, duration, filename,
@@ -156,7 +166,7 @@ export default function ExportModal({ onClose }: Props) {
           const url = URL.createObjectURL(blob)
           const a = downloadLinkRef.current!
           a.href = url
-          a.download = `veeding_${job.label.replace(/[^a-zA-Z0-9가-힣]/g, '_')}_${resolution}_${Date.now()}.mp4`
+          a.download = `veeding_${job.label.replace(/[^a-zA-Z0-9가-힣]/g, '_')}_${fileW}x${fileH}_${Date.now()}.mp4`
           a.click()
           URL.revokeObjectURL(url)
 
@@ -193,7 +203,7 @@ export default function ExportModal({ onClose }: Props) {
 
         {/* 품질 / 해상도 요약 */}
         <div className="bg-[#1E1E1E] rounded-xl p-3 mb-4 flex gap-4 text-[11px]">
-          <InfoRow label="해상도" value={`${resW} × ${resH}`} />
+          <InfoRow label="크기" value={activeBannerAsset ? `${resW} × ${resH}` : '배너 미선택'} />
           <InfoRow label="품질" value={QUALITY_MAP[quality].label} />
           <InfoRow label="포맷" value="MP4 H.264" />
         </div>

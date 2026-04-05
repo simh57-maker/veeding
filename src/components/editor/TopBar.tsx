@@ -3,15 +3,9 @@
 import { Video, Download, LogOut } from 'lucide-react'
 import { useState } from 'react'
 import { signOut } from 'next-auth/react'
-import { useEditorStore, Resolution } from '@/store/editorStore'
+import { useEditorStore } from '@/store/editorStore'
 import ExportModal from './ExportModal'
 import Image from 'next/image'
-
-const RESOLUTIONS: { label: string; value: Resolution }[] = [
-  { label: '1920 × 1080', value: '1920x1080' },
-  { label: '1200 × 1200', value: '1200x1200' },
-  { label: '1080 × 1920', value: '1080x1920' },
-]
 
 interface Props {
   user: { id: string; email: string; name: string; image: string }
@@ -19,7 +13,11 @@ interface Props {
 
 export default function TopBar({ user }: Props) {
   const [showExport, setShowExport] = useState(false)
-  const { resolution, setResolution } = useEditorStore()
+  const { activeBanner, bannerAssets } = useEditorStore()
+
+  // 현재 배너 크기를 표시
+  const bannerAsset = activeBanner ? bannerAssets.find((b) => b.id === activeBanner.assetId) : null
+  const sizeLabel = bannerAsset ? `${bannerAsset.width} × ${bannerAsset.height}` : null
 
   return (
     <>
@@ -32,16 +30,15 @@ export default function TopBar({ user }: Props) {
           <span className="text-white font-bold text-sm tracking-wide">Veeding</span>
         </div>
 
-        {/* Center: Resolution select */}
-        <select
-          value={resolution}
-          onChange={(e) => setResolution(e.target.value as Resolution)}
-          className="bg-[#1E1E1E] border border-[#444] text-[#E0E0E0] text-sm rounded-lg px-3 py-1.5 outline-none cursor-pointer hover:border-[#666] transition-colors"
-        >
-          {RESOLUTIONS.map((r) => (
-            <option key={r.value} value={r.value}>{r.label}</option>
-          ))}
-        </select>
+        {/* Center: 현재 캔버스 크기 표시 */}
+        {sizeLabel ? (
+          <div className="flex items-center gap-2 bg-[#1E1E1E] border border-[#3a3a3a] rounded-lg px-3 py-1.5">
+            <span className="text-[#888] text-xs">Canvas</span>
+            <span className="text-[#E0E0E0] text-sm font-medium">{sizeLabel}</span>
+          </div>
+        ) : (
+          <div className="text-[#555] text-xs">배너를 업로드하면 캔버스 크기가 설정됩니다</div>
+        )}
 
         {/* Right */}
         <div className="flex items-center gap-3">

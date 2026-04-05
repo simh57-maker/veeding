@@ -1,6 +1,5 @@
 import { create } from 'zustand'
 
-export type Resolution = '1920x1080' | '1200x1200' | '1080x1920'
 export type Quality = 'high' | 'medium' | 'low' | 'preview'
 
 export const QUALITY_MAP: Record<Quality, { crf: number; preset: string; label: string }> = {
@@ -67,7 +66,6 @@ export interface CompositionSet {
 }
 
 export interface EditorState {
-  resolution: Resolution
   quality: Quality
   projectDuration: number
   currentTime: number
@@ -84,7 +82,6 @@ export interface EditorState {
   sets: CompositionSet[]
   activeSetId: string | null
 
-  setResolution: (r: Resolution) => void
   setQuality: (q: Quality) => void
   setCurrentTime: (t: number) => void
   setIsPlaying: (v: boolean) => void
@@ -109,7 +106,6 @@ export interface EditorState {
 }
 
 export const useEditorStore = create<EditorState>((set, get) => ({
-  resolution: '1920x1080',
   quality: 'medium',
   projectDuration: 10,
   currentTime: 0,
@@ -124,7 +120,6 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   sets: [],
   activeSetId: null,
 
-  setResolution: (r) => set({ resolution: r }),
   setQuality: (q) => set({ quality: q }),
   setCurrentTime: (t) => set({ currentTime: t }),
   setIsPlaying: (v) => set({ isPlaying: v }),
@@ -165,15 +160,15 @@ export const useEditorStore = create<EditorState>((set, get) => ({
 
     if (bannerAsset.alphaBounds) {
       const { x, y, width, height } = bannerAsset.alphaBounds
-      const res = get().resolution
-      const [canvasW, canvasH] = res.split('x').map(Number)
+      // 배너 이미지 크기 = 캔버스 크기
+      const canvasW = bannerAsset.width
+      const canvasH = bannerAsset.height
 
-      const sx = canvasW / bannerAsset.width
-      const sy = canvasH / bannerAsset.height
-      const ax = x * sx
-      const ay = y * sy
-      const aw = width * sx
-      const ah = height * sy
+      const ax = x
+      const ay = y
+      const aw = width
+      const ah = height
+      void canvasW; void canvasH
 
       const scale = Math.max(aw / videoAsset.width, ah / videoAsset.height)
 
