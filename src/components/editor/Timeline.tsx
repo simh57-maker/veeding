@@ -8,8 +8,8 @@ const TRACK_HEIGHT = 28
 const HEADER_HEIGHT = 24
 const TIMELINE_PX_PER_SEC = 80
 
-// LeftSidebar, RightPanel 너비와 동일하게 맞춤 (w-60 = 240px)
-const SIDEBAR_W = 240
+// LeftSidebar 480px, RightPanel 240px 와 맞춤
+const SIDEBAR_W = 480
 const RIGHT_W   = 240
 
 export default function Timeline() {

@@ -1,24 +1,15 @@
 'use client'
 
 import { useEditorStore, QUALITY_MAP, Quality } from '@/store/editorStore'
-import { Settings2, Layers, Film, ImageIcon } from 'lucide-react'
+import { Settings2, Film } from 'lucide-react'
 
 const SPEED_OPTIONS = [0.5, 1.0, 1.5, 2.0]
 
 export default function RightPanel() {
-  const {
-    activeBanner, activeVideo,
-    bannerAssets, videoAssets,
-    updateVideoClip, updateBannerClip,
-    projectDuration, setProjectDuration,
-    quality, setQuality,
-  } = useEditorStore()
-
-  const videoAsset = activeVideo ? videoAssets.find((v) => v.id === activeVideo.assetId) : null
-  const bannerAsset = activeBanner ? bannerAssets.find((b) => b.id === activeBanner.assetId) : null
+  const { activeVideo, updateVideoClip, quality, setQuality } = useEditorStore()
 
   return (
-    <aside className="w-60 bg-[#2C2C2C] border-l border-[#333] flex flex-col shrink-0 overflow-y-auto">
+    <aside className="w-[240px] bg-[#2C2C2C] border-l border-[#333] flex flex-col shrink-0 overflow-y-auto">
       <div className="px-4 py-3 border-b border-[#333] flex items-center gap-2">
         <Settings2 className="w-4 h-4 text-[#888]" />
         <span className="text-xs font-semibold text-[#E0E0E0] uppercase tracking-wider">Properties</span>
@@ -26,7 +17,7 @@ export default function RightPanel() {
 
       <div className="p-4 space-y-5">
 
-        {/* 출력 품질 */}
+        {/* Export Quality */}
         <Section title="Export Quality" icon={<Settings2 className="w-3.5 h-3.5" />}>
           <div className="space-y-1">
             {(Object.keys(QUALITY_MAP) as Quality[]).map((q) => (
@@ -40,139 +31,50 @@ export default function RightPanel() {
                 }`}
               >
                 <span className="capitalize">{q}</span>
-                <span className="text-[10px] opacity-70">{QUALITY_MAP[q].label.split('(')[1]?.replace(')', '') ?? ''}</span>
+                <span className="text-[10px] opacity-70">
+                  {QUALITY_MAP[q].label.split('(')[1]?.replace(')', '') ?? ''}
+                </span>
               </button>
             ))}
           </div>
         </Section>
 
-        {/* 프로젝트 길이 */}
-        <Section title="Project" icon={<Layers className="w-3.5 h-3.5" />}>
-          <PropRow label="Duration">
-            <NumInput
-              value={parseFloat(projectDuration.toFixed(2))}
-              onChange={(v) => setProjectDuration(v)}
-              min={0.1} max={3600} step={0.1} unit="s"
-            />
-          </PropRow>
-        </Section>
-
-        {/* 영상 속성 */}
-        {activeVideo && videoAsset && (
-          <Section title="Video Layer" icon={<Film className="w-3.5 h-3.5" />}>
-            <PropRow label="X">
-              <NumInput value={Math.round(activeVideo.x)} onChange={(v) => updateVideoClip({ x: v })} unit="px" />
-            </PropRow>
-            <PropRow label="Y">
-              <NumInput value={Math.round(activeVideo.y)} onChange={(v) => updateVideoClip({ y: v })} unit="px" />
-            </PropRow>
-            <PropRow label="Scale X">
-              <NumInput value={parseFloat(activeVideo.scaleX.toFixed(3))} onChange={(v) => updateVideoClip({ scaleX: v })} min={0.01} step={0.01} />
-            </PropRow>
-            <PropRow label="Scale Y">
-              <NumInput value={parseFloat(activeVideo.scaleY.toFixed(3))} onChange={(v) => updateVideoClip({ scaleY: v })} min={0.01} step={0.01} />
-            </PropRow>
-            <PropRow label="Speed">
-              <div className="flex gap-1 flex-wrap">
-                {SPEED_OPTIONS.map((s) => (
-                  <button
-                    key={s}
-                    onClick={() => updateVideoClip({ speed: s })}
-                    className={`px-2 py-0.5 rounded text-xs border transition-colors ${
-                      activeVideo.speed === s
-                        ? 'bg-[#8B5CF6] border-[#8B5CF6] text-white'
-                        : 'border-[#444] text-[#888] hover:border-[#666] hover:text-[#E0E0E0]'
-                    }`}
-                  >
-                    {s}x
-                  </button>
-                ))}
-              </div>
-            </PropRow>
-            <PropRow label="In">
-              <NumInput value={parseFloat(activeVideo.inPoint.toFixed(2))} onChange={(v) => updateVideoClip({ inPoint: v })} min={0} max={activeVideo.outPoint - 0.1} step={0.01} unit="s" />
-            </PropRow>
-            <PropRow label="Out">
-              <NumInput value={parseFloat(activeVideo.outPoint.toFixed(2))} onChange={(v) => updateVideoClip({ outPoint: v })} min={activeVideo.inPoint + 0.1} max={videoAsset.duration} step={0.01} unit="s" />
-            </PropRow>
-            <div className="text-[10px] text-[#555] mt-1">
-              {videoAsset.width}×{videoAsset.height} · {videoAsset.duration.toFixed(1)}s
+        {/* Speed */}
+        {activeVideo && (
+          <Section title="Speed" icon={<Film className="w-3.5 h-3.5" />}>
+            <div className="grid grid-cols-2 gap-1">
+              {SPEED_OPTIONS.map((s) => (
+                <button
+                  key={s}
+                  onClick={() => updateVideoClip({ speed: s })}
+                  className={`py-1.5 rounded-lg text-xs border font-medium transition-all ${
+                    activeVideo.speed === s
+                      ? 'bg-[#8B5CF6] border-[#8B5CF6] text-white'
+                      : 'border-[#444] text-[#888] hover:border-[#666] hover:text-[#E0E0E0]'
+                  }`}
+                >
+                  {s}x
+                </button>
+              ))}
             </div>
           </Section>
         )}
 
-        {/* 배너 속성 */}
-        {activeBanner && bannerAsset && (
-          <Section title="Banner Layer" icon={<ImageIcon className="w-3.5 h-3.5" />}>
-            <div className="text-[10px] text-[#0D99FF] mb-2 bg-[#0D99FF]/10 rounded px-2 py-1">
-              배너 크기 = 출력 해상도
-            </div>
-            <PropRow label="X">
-              <NumInput value={Math.round(activeBanner.x)} onChange={(v) => updateBannerClip({ x: v })} unit="px" />
-            </PropRow>
-            <PropRow label="Y">
-              <NumInput value={Math.round(activeBanner.y)} onChange={(v) => updateBannerClip({ y: v })} unit="px" />
-            </PropRow>
-            <PropRow label="Scale X">
-              <NumInput value={parseFloat(activeBanner.scaleX.toFixed(3))} onChange={(v) => updateBannerClip({ scaleX: v })} min={0.01} step={0.01} />
-            </PropRow>
-            <PropRow label="Scale Y">
-              <NumInput value={parseFloat(activeBanner.scaleY.toFixed(3))} onChange={(v) => updateBannerClip({ scaleY: v })} min={0.01} step={0.01} />
-            </PropRow>
-            {bannerAsset.alphaBounds && (
-              <div className="mt-2 p-2 bg-[#1E1E1E] rounded-lg text-[10px] text-[#0D99FF] space-y-0.5">
-                <div className="font-medium mb-1">Alpha Region</div>
-                <div>X: {bannerAsset.alphaBounds.x}px · Y: {bannerAsset.alphaBounds.y}px</div>
-                <div>W: {bannerAsset.alphaBounds.width}px · H: {bannerAsset.alphaBounds.height}px</div>
-              </div>
-            )}
-          </Section>
-        )}
-
-        {!activeVideo && !activeBanner && (
-          <div className="text-[#555] text-xs text-center py-8">
-            레이어를 선택하면 속성이 표시됩니다
-          </div>
-        )}
       </div>
     </aside>
   )
 }
 
-function Section({ title, icon, children }: { title: string; icon: React.ReactNode; children: React.ReactNode }) {
+function Section({ title, icon, children }: {
+  title: string; icon: React.ReactNode; children: React.ReactNode
+}) {
   return (
     <div>
       <div className="flex items-center gap-1.5 mb-3">
         <span className="text-[#888]">{icon}</span>
         <span className="text-[11px] font-semibold text-[#888] uppercase tracking-wider">{title}</span>
       </div>
-      <div className="space-y-2">{children}</div>
-    </div>
-  )
-}
-
-function PropRow({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div className="flex items-center gap-2">
-      <span className="text-[11px] text-[#666] w-14 shrink-0">{label}</span>
-      <div className="flex-1">{children}</div>
-    </div>
-  )
-}
-
-function NumInput({ value, onChange, min, max, step = 1, unit }: {
-  value: number; onChange: (v: number) => void
-  min?: number; max?: number; step?: number; unit?: string
-}) {
-  return (
-    <div className="flex items-center bg-[#1E1E1E] border border-[#3a3a3a] rounded-md overflow-hidden">
-      <input
-        type="number" value={value}
-        onChange={(e) => onChange(parseFloat(e.target.value) || 0)}
-        min={min} max={max} step={step}
-        className="flex-1 bg-transparent text-[#E0E0E0] text-xs px-2 py-1 outline-none w-0"
-      />
-      {unit && <span className="text-[10px] text-[#555] pr-2">{unit}</span>}
+      {children}
     </div>
   )
 }

@@ -72,19 +72,37 @@ export default function ExportModal({ onClose }: Props) {
     const inPoint = video!.inPoint
     const speedFilter = video!.speed !== 1 ? `setpts=${(1 / video!.speed).toFixed(4)}*PTS,` : ''
 
-    // 세트별 배너 크기를 출력 해상도로 사용
+    // 배너 크기 = 출력 해상도
     const bannerAsset = banner ? bannerAssets.find((b) => b.id === banner.assetId) : null
-    const outW = bannerAsset?.width ?? resW
+    const outW = bannerAsset?.width  ?? resW
     const outH = bannerAsset?.height ?? resH
 
-    let filterComplex = `[0:v]${speedFilter}scale=${outW}:${outH}:force_original_aspect_ratio=increase,crop=${outW}:${outH}[vid]`
+    // 캔버스에서의 영상 실제 렌더 크기 (scaleX/Y 적용)
+    const vidW = Math.round(videoAsset.width  * video!.scaleX)
+    const vidH = Math.round(videoAsset.height * video!.scaleY)
+    // 영상 중심 → 좌상단 좌표 (FFmpeg overlay는 좌상단 기준)
+    const vidX = Math.round(video!.x - vidW / 2)
+    const vidY = Math.round(video!.y - vidH / 2)
+
+    // 영상을 캔버스 위치/크기 그대로 outW×outH 검정 배경 위에 배치
+    // overlay 좌표가 음수이거나 캔버스를 벗어나는 경우도 FFmpeg가 처리
+    let filterComplex =
+      `[0:v]${speedFilter}scale=${vidW}:${vidH}[scaled];` +
+      `color=black:size=${outW}x${outH}:rate=30[bg];` +
+      `[bg][scaled]overlay=${vidX}:${vidY}[vid]`
     const inputs = ['-ss', String(inPoint), '-i', 'input.mp4']
     const maps = ['-map', '[vid]']
 
     if (bannerAsset) {
       const bannerData = await fetchFile(bannerAsset.dataUrl)
       await ffmpeg.writeFile('banner.png', bannerData)
-      filterComplex = `[0:v]${speedFilter}scale=${outW}:${outH}:force_original_aspect_ratio=increase,crop=${outW}:${outH}[vid];[1:v]scale=${outW}:${outH}[banner];[vid][banner]overlay=0:0[out]`
+      // 배너는 캔버스 전체 크기로 overlay (배너 자체가 캔버스 크기)
+      filterComplex =
+        `[0:v]${speedFilter}scale=${vidW}:${vidH}[scaled];` +
+        `color=black:size=${outW}x${outH}:rate=30[bg];` +
+        `[bg][scaled]overlay=${vidX}:${vidY}[vid];` +
+        `[1:v]scale=${outW}:${outH}[banner];` +
+        `[vid][banner]overlay=0:0[out]`
       inputs.push('-i', 'banner.png')
       maps.length = 0
       maps.push('-map', '[out]')
