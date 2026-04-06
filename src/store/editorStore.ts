@@ -154,8 +154,16 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       ? { ...clip, x: asset.width / 2, y: asset.height / 2, scaleX: 1, scaleY: 1 }
       : clip
     set({ activeBanner: centered })
+    // 영상도 이미 있으면 즉시 compose (set 완료 후 get()으로 읽어야 정확)
+    const { activeVideo } = get()
+    if (activeVideo) get().autoCompose()
   },
-  setActiveVideo: (clip) => set({ activeVideo: clip }),
+  setActiveVideo: (clip) => {
+    set({ activeVideo: clip })
+    // 배너도 이미 있으면 즉시 compose
+    const { activeBanner } = get()
+    if (clip && activeBanner) get().autoCompose()
+  },
   setSelectedLayer: (l) => set({ selectedLayer: l }),
 
   updateVideoClip: (partial) =>
