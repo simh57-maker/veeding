@@ -34,7 +34,7 @@ export default function CanvasArea() {
     activeBanner, activeVideo,
     bannerAssets, videoAssets,
     currentTime, isPlaying,
-    setCurrentTime, setSelectedLayer, updateVideoClip,
+    setCurrentTime, setIsPlaying, setSelectedLayer, updateVideoClip,
   } = useEditorStore()
 
   const bannerAsset = activeBanner ? bannerAssets.find((b) => b.id === activeBanner.assetId) : null
@@ -103,8 +103,8 @@ export default function CanvasArea() {
     ctx.clearRect(0, 0, canvasW, canvasH)
     drawCheckerboard(ctx, canvasW, canvasH)
 
-    // 영상 레이어
-    if (activeVideo && video && videoAsset) {
+    // 영상 레이어 (플레이 중에는 숨김)
+    if (!isPlaying && activeVideo && video && videoAsset) {
       const { rw, rh, l, t } = getVideoBox()!
       ctx.drawImage(video, l, t, rw, rh)
     }
@@ -136,7 +136,7 @@ export default function CanvasArea() {
         ctx.strokeRect (h.x - HANDLE_SIZE / 2, h.y - HANDLE_SIZE / 2, HANDLE_SIZE, HANDLE_SIZE)
       }
     }
-  }, [activeVideo, activeBanner, bannerAsset, videoAsset, canvasW, canvasH, getVideoBox, getHandles])
+  }, [isPlaying, activeVideo, activeBanner, bannerAsset, videoAsset, canvasW, canvasH, getVideoBox, getHandles])
 
   // ── 애니메이션 루프 ──────────────────────────────────────
   useEffect(() => {
@@ -163,6 +163,18 @@ export default function CanvasArea() {
   }, [isPlaying, activeVideo, videoAsset, currentTime, drawFrame, setCurrentTime])
 
   useEffect(() => { drawFrame() }, [drawFrame, activeBanner, activeVideo])
+
+  // ── 스페이스바 단축키 ────────────────────────────────────
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.code === 'Space' && !(e.target instanceof HTMLInputElement) && !(e.target instanceof HTMLTextAreaElement)) {
+        e.preventDefault()
+        setIsPlaying(!isPlaying)
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [isPlaying, setIsPlaying])
 
   // ── 히트 테스트 ──────────────────────────────────────────
   function hitHandle(cx: number, cy: number) {

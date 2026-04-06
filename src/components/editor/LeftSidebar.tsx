@@ -240,14 +240,7 @@ export default function LeftSidebar() {
 
       {/* 하단 버튼 */}
       {activeBanner && activeVideo && (
-        <div className="p-3 border-t border-[#333] flex flex-col gap-2 shrink-0">
-          <button
-            onClick={autoCompose}
-            className="w-full flex items-center justify-center gap-2 bg-[#1E1E1E] hover:bg-[#333] border border-[#444] text-[#E0E0E0] text-xs font-medium py-1.5 rounded-lg transition-colors"
-          >
-            <Layers className="w-3.5 h-3.5 text-[#0D99FF]" />
-            Set Composition
-          </button>
+        <div className="p-3 border-t border-[#333] shrink-0">
           <button
             onClick={saveSet}
             className="w-full flex items-center justify-center gap-2 bg-[#0D99FF] hover:bg-[#0b87e0] text-white text-xs font-medium py-1.5 rounded-lg transition-colors"
