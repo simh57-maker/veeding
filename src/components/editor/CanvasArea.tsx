@@ -4,11 +4,17 @@ import { useEffect, useRef, useCallback, useState } from 'react'
 import { useEditorStore } from '@/store/editorStore'
 
 const CANVAS_PADDING = 40
-const HANDLE_SIZE = 8
+const CORNER_SIZE = 8   // 코너 핸들 크기
+const EDGE_SIZE   = 6   // 엣지 핸들 크기
+const SNAP_DIST   = 10  // 중앙 스냅 가이드 표시 임계값 (캔버스 px)
+
+type CornerHandle = 'tl' | 'tr' | 'bl' | 'br'
+type EdgeHandle   = 'tc' | 'bc' | 'lc' | 'rc'   // top/bottom/left/right center
+type HandleId     = CornerHandle | EdgeHandle
 
 type DragMode =
   | { type: 'move' }
-  | { type: 'resize'; corner: 'tl' | 'tr' | 'bl' | 'br' }
+  | { type: 'resize'; handle: HandleId }
 
 interface DragState {
   mode: DragMode
@@ -20,15 +26,22 @@ interface DragState {
   startScaleY: number
   startW: number
   startH: number
-  shiftLock: 'none' | 'x' | 'y'  // shift 축 잠금
+  shiftLock: 'none' | 'x' | 'y'
+}
+
+// 드래그 중 캔버스 중앙 근접 여부 (ref로 공유)
+interface SnapState {
+  snapX: boolean  // 영상 cx ≈ canvasW/2
+  snapY: boolean  // 영상 cy ≈ canvasH/2
 }
 
 export default function CanvasArea() {
-  const canvasRef = useRef<HTMLCanvasElement>(null)
-  const videoRef = useRef<HTMLVideoElement>(null)
+  const canvasRef    = useRef<HTMLCanvasElement>(null)
+  const videoRef     = useRef<HTMLVideoElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const animFrameRef = useRef<number>(0)
-  const dragRef = useRef<DragState | null>(null)
+  const dragRef      = useRef<DragState | null>(null)
+  const snapRef      = useRef<SnapState>({ snapX: false, snapY: false })
   const [cursor, setCursor] = useState<string>('default')
 
   const {
@@ -58,10 +71,7 @@ export default function CanvasArea() {
     if (!canvas) return { x: 0, y: 0 }
     const rect  = canvas.getBoundingClientRect()
     const scale = getScale()
-    return {
-      x: (ex - rect.left)  / scale,
-      y: (ey - rect.top)   / scale,
-    }
+    return { x: (ex - rect.left) / scale, y: (ey - rect.top) / scale }
   }, [getScale])
 
   const getVideoBox = useCallback(() => {
@@ -79,14 +89,21 @@ export default function CanvasArea() {
     }
   }, [activeVideo, videoAsset])
 
-  const getHandles = useCallback(() => {
+  // 코너 4 + 엣지 4 = 핸들 8개
+  const getHandles = useCallback((): { id: HandleId; x: number; y: number }[] => {
     const box = getVideoBox()
     if (!box) return []
+    const mx = (box.l + box.r) / 2
+    const my = (box.t + box.b) / 2
     return [
-      { id: 'tl' as const, x: box.l, y: box.t },
-      { id: 'tr' as const, x: box.r, y: box.t },
-      { id: 'bl' as const, x: box.l, y: box.b },
-      { id: 'br' as const, x: box.r, y: box.b },
+      { id: 'tl', x: box.l, y: box.t },
+      { id: 'tr', x: box.r, y: box.t },
+      { id: 'bl', x: box.l, y: box.b },
+      { id: 'br', x: box.r, y: box.b },
+      { id: 'tc', x: mx,    y: box.t },
+      { id: 'bc', x: mx,    y: box.b },
+      { id: 'lc', x: box.l, y: my    },
+      { id: 'rc', x: box.r, y: my    },
     ]
   }, [getVideoBox])
 
@@ -114,21 +131,57 @@ export default function CanvasArea() {
       if (img) ctx.drawImage(img, activeBanner.x - bw / 2, activeBanner.y - bh / 2, bw, bh)
     }
 
-    // 영상 선택 핸들 — 재생 중에는 숨김
+    // 영상 선택 핸들 — 재생 중 숨김
     if (!isPlaying && activeVideo && videoAsset) {
       const box = getVideoBox()!
+
+      // ── 중앙 스냅 가이드라인 ──────────────────────────
+      const { snapX, snapY } = snapRef.current
+      ctx.save()
+      ctx.strokeStyle = 'rgba(255, 60, 60, 0.85)'
+      ctx.lineWidth   = 1
+      ctx.setLineDash([6, 5])
+      if (snapX) {
+        ctx.beginPath()
+        ctx.moveTo(canvasW / 2, 0)
+        ctx.lineTo(canvasW / 2, canvasH)
+        ctx.stroke()
+      }
+      if (snapY) {
+        ctx.beginPath()
+        ctx.moveTo(0, canvasH / 2)
+        ctx.lineTo(canvasW, canvasH / 2)
+        ctx.stroke()
+      }
+      ctx.setLineDash([])
+      ctx.restore()
+
+      // 선택 테두리
       ctx.strokeStyle = 'rgba(13, 153, 255, 0.8)'
       ctx.lineWidth   = 2
       ctx.setLineDash([6, 3])
       ctx.strokeRect(box.l, box.t, box.rw, box.rh)
       ctx.setLineDash([])
 
+      // 핸들 그리기
       for (const h of getHandles()) {
+        const isEdge = ['tc','bc','lc','rc'].includes(h.id)
+        const sz = isEdge ? EDGE_SIZE : CORNER_SIZE
         ctx.fillStyle   = '#fff'
         ctx.strokeStyle = '#0D99FF'
         ctx.lineWidth   = 1.5
-        ctx.fillRect   (h.x - HANDLE_SIZE / 2, h.y - HANDLE_SIZE / 2, HANDLE_SIZE, HANDLE_SIZE)
-        ctx.strokeRect (h.x - HANDLE_SIZE / 2, h.y - HANDLE_SIZE / 2, HANDLE_SIZE, HANDLE_SIZE)
+        if (isEdge) {
+          // 엣지 핸들: 타원형
+          ctx.beginPath()
+          const rx = (h.id === 'tc' || h.id === 'bc') ? sz / 2 : sz * 0.35
+          const ry = (h.id === 'lc' || h.id === 'rc') ? sz / 2 : sz * 0.35
+          ctx.ellipse(h.x, h.y, rx, ry, 0, 0, Math.PI * 2)
+          ctx.fill()
+          ctx.stroke()
+        } else {
+          ctx.fillRect  (h.x - sz / 2, h.y - sz / 2, sz, sz)
+          ctx.strokeRect(h.x - sz / 2, h.y - sz / 2, sz, sz)
+        }
       }
     }
   }, [isPlaying, activeVideo, activeBanner, bannerAsset, videoAsset, canvasW, canvasH, getVideoBox, getHandles])
@@ -137,7 +190,6 @@ export default function CanvasArea() {
   useEffect(() => {
     const video = videoRef.current
     if (!video || !activeVideo || !videoAsset) return
-
     if (video.src !== videoAsset.url) video.src = videoAsset.url
 
     if (isPlaying) {
@@ -159,35 +211,28 @@ export default function CanvasArea() {
 
   useEffect(() => { drawFrame() }, [drawFrame, activeBanner, activeVideo])
 
-  // 스페이스바 단축키
+  // 스페이스바 / undo / redo 단축키
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const tag = (e.target as HTMLElement)?.tagName
       if (tag === 'INPUT' || tag === 'TEXTAREA') return
-
       const ctrl = e.ctrlKey || e.metaKey
-
-      if (e.code === 'Space') {
-        e.preventDefault()
-        setIsPlaying(!isPlaying)
-        return
-      }
-
-      // Cmd/Ctrl+Z → undo, Cmd/Ctrl+Shift+Z → redo
+      if (e.code === 'Space') { e.preventDefault(); setIsPlaying(!isPlaying); return }
       if (ctrl && e.code === 'KeyZ') {
         e.preventDefault()
-        if (e.shiftKey) redo()
-        else undo()
+        if (e.shiftKey) redo(); else undo()
       }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [isPlaying, setIsPlaying, undo, redo])
 
-  function hitHandle(cx: number, cy: number) {
+  // ── 히트 테스트 ─────────────────────────────────────────
+  function hitHandle(cx: number, cy: number): HandleId | null {
     if (!activeVideo || isPlaying) return null
     for (const h of getHandles()) {
-      if (Math.abs(cx - h.x) <= HANDLE_SIZE && Math.abs(cy - h.y) <= HANDLE_SIZE) return h.id
+      const sz = ['tc','bc','lc','rc'].includes(h.id) ? EDGE_SIZE : CORNER_SIZE
+      if (Math.abs(cx - h.x) <= sz && Math.abs(cy - h.y) <= sz) return h.id
     }
     return null
   }
@@ -198,24 +243,30 @@ export default function CanvasArea() {
     return cx >= box.l && cx <= box.r && cy >= box.t && cy <= box.b
   }
 
+  // 핸들 id → 커서 모양
+  function handleCursor(id: HandleId): string {
+    if (id === 'tl' || id === 'br') return 'nwse-resize'
+    if (id === 'tr' || id === 'bl') return 'nesw-resize'
+    if (id === 'tc' || id === 'bc') return 'ns-resize'
+    if (id === 'lc' || id === 'rc') return 'ew-resize'
+    return 'default'
+  }
+
+  // ── 마우스 이벤트 ────────────────────────────────────────
   function handleMouseDown(e: React.MouseEvent<HTMLCanvasElement>) {
     if (!activeVideo || !videoAsset) return
     const { x, y } = toCanvas(e.clientX, e.clientY)
 
-    const corner = hitHandle(x, y)
-    if (corner) {
+    const h = hitHandle(x, y)
+    if (h) {
       const box = getVideoBox()!
       dragRef.current = {
-        mode: { type: 'resize', corner },
-        startMouseX: e.clientX,
-        startMouseY: e.clientY,
-        startX:      activeVideo.x,
-        startY:      activeVideo.y,
-        startScaleX: activeVideo.scaleX,
-        startScaleY: activeVideo.scaleY,
-        startW:      box.rw,
-        startH:      box.rh,
-        shiftLock:   'none',
+        mode: { type: 'resize', handle: h },
+        startMouseX: e.clientX, startMouseY: e.clientY,
+        startX: activeVideo.x,  startY: activeVideo.y,
+        startScaleX: activeVideo.scaleX, startScaleY: activeVideo.scaleY,
+        startW: box.rw, startH: box.rh,
+        shiftLock: 'none',
       }
       setSelectedLayer('video')
       return
@@ -224,15 +275,11 @@ export default function CanvasArea() {
     if (hitVideoBox(x, y)) {
       dragRef.current = {
         mode: { type: 'move' },
-        startMouseX: e.clientX,
-        startMouseY: e.clientY,
-        startX:      activeVideo.x,
-        startY:      activeVideo.y,
-        startScaleX: activeVideo.scaleX,
-        startScaleY: activeVideo.scaleY,
-        startW:      0,
-        startH:      0,
-        shiftLock:   'none',
+        startMouseX: e.clientX, startMouseY: e.clientY,
+        startX: activeVideo.x,  startY: activeVideo.y,
+        startScaleX: activeVideo.scaleX, startScaleY: activeVideo.scaleY,
+        startW: 0, startH: 0,
+        shiftLock: 'none',
       }
       setSelectedLayer('video')
       return
@@ -247,9 +294,8 @@ export default function CanvasArea() {
 
     if (!dragRef.current) {
       if (activeVideo && !isPlaying) {
-        const corner = hitHandle(x, y)
-        if (corner === 'tl' || corner === 'br') { setCursor('nwse-resize'); return }
-        if (corner === 'tr' || corner === 'bl') { setCursor('nesw-resize'); return }
+        const h = hitHandle(x, y)
+        if (h) { setCursor(handleCursor(h)); return }
         if (hitVideoBox(x, y)) { setCursor('move'); return }
       }
       setCursor('default')
@@ -261,7 +307,7 @@ export default function CanvasArea() {
     let dy = (e.clientY - drag.startMouseY) / scale
 
     if (drag.mode.type === 'move') {
-      // Shift 축 잠금: 처음 이동 방향으로 고정
+      // Shift 축 잠금
       if (e.shiftKey) {
         if (drag.shiftLock === 'none') {
           if (Math.abs(dx) > Math.abs(dy)) drag.shiftLock = 'x'
@@ -273,35 +319,64 @@ export default function CanvasArea() {
         drag.shiftLock = 'none'
       }
 
-      updateVideoClip({
-        x: drag.startX + dx,
-        y: drag.startY + dy,
-      })
+      const newX = drag.startX + dx
+      const newY = drag.startY + dy
+
+      // 중앙 스냅 가이드 계산
+      snapRef.current = {
+        snapX: Math.abs(newX - canvasW / 2) < SNAP_DIST,
+        snapY: Math.abs(newY - canvasH / 2) < SNAP_DIST,
+      }
+
+      updateVideoClip({ x: newX, y: newY })
+
     } else {
-      const corner = (drag.mode as { type: 'resize'; corner: string }).corner
+      // 리사이즈
+      snapRef.current = { snapX: false, snapY: false }
+
+      const handle = (drag.mode as { type: 'resize'; handle: HandleId }).handle
       const aspect = drag.startW / drag.startH
 
-      let delta = 0
-      if (corner === 'br') delta = (dx + dy) / 2
-      if (corner === 'bl') delta = (-dx + dy) / 2
-      if (corner === 'tr') delta = (dx - dy) / 2
-      if (corner === 'tl') delta = (-dx - dy) / 2
+      // 코너: 비율 유지 리사이즈
+      if (['tl','tr','bl','br'].includes(handle)) {
+        let delta = 0
+        if (handle === 'br') delta = (dx + dy) / 2
+        if (handle === 'bl') delta = (-dx + dy) / 2
+        if (handle === 'tr') delta = (dx - dy) / 2
+        if (handle === 'tl') delta = (-dx - dy) / 2
 
-      const newH = Math.max(50, drag.startH + delta)
-      const newW = newH * aspect
-      const newScale = newH / (videoAsset?.height ?? 1)
+        const newH = Math.max(50, drag.startH + delta)
+        const newW = newH * aspect
+        const newScale = newH / (videoAsset?.height ?? 1)
 
-      let newCx = drag.startX
-      let newCy = drag.startY
-      const dw = (newW - drag.startW) / 2
-      const dh = (newH - drag.startH) / 2
+        let newCx = drag.startX
+        let newCy = drag.startY
+        const dw = (newW - drag.startW) / 2
+        const dh = (newH - drag.startH) / 2
 
-      if (corner === 'br') { newCx = drag.startX + dw; newCy = drag.startY + dh }
-      if (corner === 'bl') { newCx = drag.startX - dw; newCy = drag.startY + dh }
-      if (corner === 'tr') { newCx = drag.startX + dw; newCy = drag.startY - dh }
-      if (corner === 'tl') { newCx = drag.startX - dw; newCy = drag.startY - dh }
+        if (handle === 'br') { newCx = drag.startX + dw; newCy = drag.startY + dh }
+        if (handle === 'bl') { newCx = drag.startX - dw; newCy = drag.startY + dh }
+        if (handle === 'tr') { newCx = drag.startX + dw; newCy = drag.startY - dh }
+        if (handle === 'tl') { newCx = drag.startX - dw; newCy = drag.startY - dh }
 
-      updateVideoClip({ x: newCx, y: newCy, scaleX: newScale, scaleY: newScale })
+        updateVideoClip({ x: newCx, y: newCy, scaleX: newScale, scaleY: newScale })
+
+      } else {
+        // 엣지: 한 축만 리사이즈 (비율 유지 없음)
+        let newW = drag.startW
+        let newH = drag.startH
+        let newCx = drag.startX
+        let newCy = drag.startY
+
+        if (handle === 'rc') { newW = Math.max(50, drag.startW + dx);  newCx = drag.startX + dx / 2 }
+        if (handle === 'lc') { newW = Math.max(50, drag.startW - dx);  newCx = drag.startX + dx / 2 }
+        if (handle === 'bc') { newH = Math.max(50, drag.startH + dy);  newCy = drag.startY + dy / 2 }
+        if (handle === 'tc') { newH = Math.max(50, drag.startH - dy);  newCy = drag.startY + dy / 2 }
+
+        const newScaleX = newW / (videoAsset?.width  ?? 1)
+        const newScaleY = newH / (videoAsset?.height ?? 1)
+        updateVideoClip({ x: newCx, y: newCy, scaleX: newScaleX, scaleY: newScaleY })
+      }
     }
 
     drawFrame()
@@ -309,7 +384,9 @@ export default function CanvasArea() {
 
   function handleMouseUp() {
     if (dragRef.current) {
+      snapRef.current = { snapX: false, snapY: false }
       pushHistory()
+      drawFrame()
     }
     dragRef.current = null
   }
