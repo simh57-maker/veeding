@@ -374,16 +374,34 @@ export default function CanvasArea() {
         updateVideoClip({ x: newCx, y: newCy, scaleX: newScaleX, scaleY: newScaleY })
 
       } else {
-        // 엣지: 한 축만 리사이즈 (비율 유지 없음)
+        // 엣지: Shift = 비율 유지, 기본 = 단축 방향만 리사이즈
         let newW = drag.startW
         let newH = drag.startH
         let newCx = drag.startX
         let newCy = drag.startY
 
-        if (handle === 'rc') { newW = Math.max(50, drag.startW + dx);  newCx = drag.startX + dx / 2 }
-        if (handle === 'lc') { newW = Math.max(50, drag.startW - dx);  newCx = drag.startX + dx / 2 }
-        if (handle === 'bc') { newH = Math.max(50, drag.startH + dy);  newCy = drag.startY + dy / 2 }
-        if (handle === 'tc') { newH = Math.max(50, drag.startH - dy);  newCy = drag.startY + dy / 2 }
+        if (e.shiftKey) {
+          // 비율 유지: 드래그 축의 델타로 전체 스케일
+          let delta = 0
+          if (handle === 'rc') delta = dx
+          if (handle === 'lc') delta = -dx
+          if (handle === 'bc') delta = dy
+          if (handle === 'tc') delta = -dy
+
+          newH = Math.max(50, drag.startH + delta)
+          newW = newH * aspect
+          const dw = (newW - drag.startW) / 2
+          const dh = (newH - drag.startH) / 2
+          if (handle === 'rc') { newCx = drag.startX + dw }
+          if (handle === 'lc') { newCx = drag.startX - dw }
+          if (handle === 'bc') { newCy = drag.startY + dh }
+          if (handle === 'tc') { newCy = drag.startY - dh }
+        } else {
+          if (handle === 'rc') { newW = Math.max(50, drag.startW + dx); newCx = drag.startX + dx / 2 }
+          if (handle === 'lc') { newW = Math.max(50, drag.startW - dx); newCx = drag.startX + dx / 2 }
+          if (handle === 'bc') { newH = Math.max(50, drag.startH + dy); newCy = drag.startY + dy / 2 }
+          if (handle === 'tc') { newH = Math.max(50, drag.startH - dy); newCy = drag.startY + dy / 2 }
+        }
 
         const newScaleX = newW / (videoAsset?.width  ?? 1)
         const newScaleY = newH / (videoAsset?.height ?? 1)

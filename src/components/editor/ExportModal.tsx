@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { X, Download, Loader2, CheckCircle } from 'lucide-react'
 import { useEditorStore, QUALITY_MAP, CompositionSet } from '@/store/editorStore'
 
@@ -8,35 +8,48 @@ interface Props {
   onClose: () => void
 }
 
-type ExportStatus = 'idle' | 'loading' | 'processing' | 'done' | 'error'
+type ExportStatus = 'idle' | 'processing' | 'done' | 'error'
 
 interface ExportJob {
-  setId: string | 'current'
+  setId: string
   label: string
   status: ExportStatus
   progress: number
   error?: string
 }
 
-export default function ExportModal({ onClose }: Props) {
-  const { activeVideo, activeBanner, videoAssets, bannerAssets, projectDuration, quality, sets } = useEditorStore()
+// 예상 시간 계산: 픽셀 수 × 길이 × crf 계수 (경험적 공식)
+function estimateSeconds(widthPx: number, heightPx: number, durationSec: number, crf: number): number {
+  const megapixels = (widthPx * heightPx) / 1_000_000
+  // Basic(crf25) ≈ 0.8s/MP/s, Preview(crf40) ≈ 0.3s/MP/s (브라우저 wasm 기준 추정)
+  const crfFactor = crf <= 28 ? 0.8 : 0.3
+  return Math.round(megapixels * durationSec * crfFactor)
+}
 
-  // 캔버스 크기 = 현재 활성 배너의 실제 크기
+function fmtSec(s: number): string {
+  if (s < 60) return `약 ${s}초`
+  return `약 ${Math.ceil(s / 60)}분`
+}
+
+export default function ExportModal({ onClose }: Props) {
+  const { activeVideo, activeBanner, videoAssets, bannerAssets, quality, sets } = useEditorStore()
+
   const activeBannerAsset = activeBanner ? bannerAssets.find((b) => b.id === activeBanner.assetId) : null
-  const resW = activeBannerAsset?.width ?? 1920
+  const resW = activeBannerAsset?.width  ?? 1920
   const resH = activeBannerAsset?.height ?? 1080
 
-  // 선택 모드: 'current' | 세트 id들
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(() => {
-    if (sets.length === 0) return new Set(['current'])
-    return new Set<string>()
-  })
-
+  // 모든 세트가 기본 선택
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set(sets.map((s) => s.id)))
   const [jobs, setJobs] = useState<ExportJob[]>([])
   const [isRunning, setIsRunning] = useState(false)
   const downloadLinkRef = useRef<HTMLAnchorElement>(null)
 
   const qualityCfg = QUALITY_MAP[quality]
+
+  // 세트 목록이 바뀌면 선택 동기화
+  useEffect(() => {
+    setSelectedIds(new Set(sets.map((s) => s.id)))
+  }, [sets])
 
   function toggleId(id: string) {
     setSelectedIds((prev) => {
@@ -47,10 +60,18 @@ export default function ExportModal({ onClose }: Props) {
     })
   }
 
-  function selectAll() {
-    const ids = new Set<string>(sets.map((s) => s.id))
-    setSelectedIds(ids)
-  }
+  function selectAll()   { setSelectedIds(new Set(sets.map((s) => s.id))) }
+  function deselectAll() { setSelectedIds(new Set()) }
+
+  // 선택된 세트들의 예상 총 시간
+  const totalEstSec = Array.from(selectedIds).reduce((acc, id) => {
+    const s = sets.find((x) => x.id === id)
+    if (!s) return acc
+    const bAsset = bannerAssets.find((b) => b.id === s.banner.assetId)
+    const w = bAsset?.width  ?? resW
+    const h = bAsset?.height ?? resH
+    return acc + estimateSeconds(w, h, s.projectDuration, qualityCfg.crf)
+  }, 0)
 
   // ─── 단일 세트 렌더링 ───────────────────────────────────
   async function renderOne(
@@ -72,20 +93,15 @@ export default function ExportModal({ onClose }: Props) {
     const inPoint = video!.inPoint
     const speedFilter = video!.speed !== 1 ? `setpts=${(1 / video!.speed).toFixed(4)}*PTS,` : ''
 
-    // 배너 크기 = 출력 해상도
     const bannerAsset = banner ? bannerAssets.find((b) => b.id === banner.assetId) : null
     const outW = bannerAsset?.width  ?? resW
     const outH = bannerAsset?.height ?? resH
 
-    // 캔버스에서의 영상 실제 렌더 크기 (scaleX/Y 적용)
     const vidW = Math.round(videoAsset.width  * video!.scaleX)
     const vidH = Math.round(videoAsset.height * video!.scaleY)
-    // 영상 중심 → 좌상단 좌표 (FFmpeg overlay는 좌상단 기준)
     const vidX = Math.round(video!.x - vidW / 2)
     const vidY = Math.round(video!.y - vidH / 2)
 
-    // 영상을 캔버스 위치/크기 그대로 outW×outH 검정 배경 위에 배치
-    // overlay 좌표가 음수이거나 캔버스를 벗어나는 경우도 FFmpeg가 처리
     let filterComplex =
       `[0:v]${speedFilter}scale=${vidW}:${vidH}[scaled];` +
       `color=black:size=${outW}x${outH}:rate=30[bg];` +
@@ -96,7 +112,6 @@ export default function ExportModal({ onClose }: Props) {
     if (bannerAsset) {
       const bannerData = await fetchFile(bannerAsset.dataUrl)
       await ffmpeg.writeFile('banner.png', bannerData)
-      // 배너는 캔버스 전체 크기로 overlay (배너 자체가 캔버스 크기)
       filterComplex =
         `[0:v]${speedFilter}scale=${vidW}:${vidH}[scaled];` +
         `color=black:size=${outW}x${outH}:rate=30[bg];` +
@@ -131,10 +146,9 @@ export default function ExportModal({ onClose }: Props) {
     if (selectedIds.size === 0) return
     setIsRunning(true)
 
-    // 작업 목록 초기화
     const jobList: ExportJob[] = Array.from(selectedIds).map((id) => ({
       setId: id,
-      label: id === 'current' ? '현재 컴포지션' : (sets.find((s) => s.id === id)?.name ?? id),
+      label: sets.find((s) => s.id === id)?.name ?? id,
       status: 'idle',
       progress: 0,
     }))
@@ -152,26 +166,18 @@ export default function ExportModal({ onClose }: Props) {
       })
 
       for (let i = 0; i < jobList.length; i++) {
-        const job = jobList[i]
         updateJob(i, { status: 'processing' })
 
         try {
-          let banner = activeBanner
-          let video = activeVideo
-          let duration = projectDuration
-
-          if (job.setId !== 'current') {
-            const found = sets.find((s) => s.id === job.setId) as CompositionSet
-            banner = found.banner
-            video = found.video
-            duration = found.projectDuration
-          }
+          const found = sets.find((s) => s.id === jobList[i].setId) as CompositionSet
+          const banner = found.banner
+          const video  = found.video
+          const duration = found.projectDuration
 
           if (!video) throw new Error('영상이 없습니다')
 
-          // 이 세트의 배너 크기 = 출력 해상도
-          const setBannerAsset = banner ? bannerAssets.find((b) => b.id === banner!.assetId) : null
-          const fileW = setBannerAsset?.width ?? resW
+          const setBannerAsset = bannerAssets.find((b) => b.id === banner?.assetId)
+          const fileW = setBannerAsset?.width  ?? resW
           const fileH = setBannerAsset?.height ?? resH
 
           const filename = `out_${i}.mp4`
@@ -180,11 +186,10 @@ export default function ExportModal({ onClose }: Props) {
             (p) => updateJob(i, { progress: p }),
           )
 
-          // 다운로드
           const url = URL.createObjectURL(blob)
           const a = downloadLinkRef.current!
           a.href = url
-          a.download = `veeding_${job.label.replace(/[^a-zA-Z0-9가-힣]/g, '_')}_${fileW}x${fileH}_${Date.now()}.mp4`
+          a.download = `veeding_${jobList[i].label.replace(/[^a-zA-Z0-9가-힣]/g, '_')}_${fileW}x${fileH}_${Date.now()}.mp4`
           a.click()
           URL.revokeObjectURL(url)
 
@@ -229,39 +234,51 @@ export default function ExportModal({ onClose }: Props) {
         {/* 세트 선택 */}
         <div className="mb-4">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-xs text-[#888] font-medium">출력할 항목 선택</span>
-            {sets.length > 0 && (
-              <button onClick={selectAll} className="text-[10px] text-[#0D99FF] hover:underline">
-                전체 선택
-              </button>
-            )}
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-[#888] font-medium">출력할 세트 선택</span>
+              <span className="bg-[#0D99FF]/20 text-[#0D99FF] text-[10px] font-semibold px-1.5 py-0.5 rounded-full">
+                {sets.length}개
+              </span>
+            </div>
+            <div className="flex gap-2">
+              <button onClick={selectAll}   className="text-[10px] text-[#0D99FF] hover:underline">전체 선택</button>
+              <button onClick={deselectAll} className="text-[10px] text-[#666]    hover:underline">전체 해제</button>
+            </div>
           </div>
 
-          <div className="space-y-1 max-h-44 overflow-y-auto">
-            {/* 현재 컴포지션 */}
-            {(sets.length === 0 || activeBanner || activeVideo) && (
-              <SelectRow
-                id="current"
-                label="현재 컴포지션"
-                sub={`${projectDuration.toFixed(1)}s`}
-                checked={selectedIds.has('current')}
-                onChange={() => toggleId('current')}
-              />
-            )}
-
-            {/* 등록된 세트들 */}
-            {sets.map((s) => (
-              <SelectRow
-                key={s.id}
-                id={s.id}
-                label={s.name}
-                sub={`${s.projectDuration.toFixed(1)}s`}
-                checked={selectedIds.has(s.id)}
-                onChange={() => toggleId(s.id)}
-              />
-            ))}
-          </div>
+          {sets.length === 0 ? (
+            <div className="text-[11px] text-[#555] text-center py-4 border border-[#333] rounded-lg">
+              등록된 세트가 없습니다
+            </div>
+          ) : (
+            <div className="space-y-1 max-h-44 overflow-y-auto">
+              {sets.map((s) => {
+                const bAsset = bannerAssets.find((b) => b.id === s.banner.assetId)
+                const w = bAsset?.width  ?? resW
+                const h = bAsset?.height ?? resH
+                const est = estimateSeconds(w, h, s.projectDuration, qualityCfg.crf)
+                return (
+                  <SelectRow
+                    key={s.id}
+                    id={s.id}
+                    label={s.name}
+                    sub={`${s.projectDuration.toFixed(1)}s · ${w}×${h} · ${fmtSec(est)}`}
+                    checked={selectedIds.has(s.id)}
+                    onChange={() => toggleId(s.id)}
+                  />
+                )
+              })}
+            </div>
+          )}
         </div>
+
+        {/* 총 예상 시간 */}
+        {selectedIds.size > 0 && jobs.length === 0 && (
+          <div className="mb-4 bg-[#1E1E1E] rounded-lg px-3 py-2 flex items-center justify-between">
+            <span className="text-[11px] text-[#666]">총 예상 렌더 시간</span>
+            <span className="text-[11px] text-[#E0E0E0] font-medium">{fmtSec(totalEstSec)}</span>
+          </div>
+        )}
 
         {/* 진행 상황 */}
         {jobs.length > 0 && (
@@ -270,9 +287,9 @@ export default function ExportModal({ onClose }: Props) {
               <div key={i} className="bg-[#1E1E1E] rounded-lg p-2.5">
                 <div className="flex items-center justify-between mb-1">
                   <span className="text-xs text-[#E0E0E0] truncate flex-1">{job.label}</span>
-                  {job.status === 'done' && <CheckCircle className="w-3.5 h-3.5 text-[#4dbb88] shrink-0" />}
+                  {job.status === 'done'       && <CheckCircle className="w-3.5 h-3.5 text-[#4dbb88] shrink-0" />}
                   {job.status === 'processing' && <Loader2 className="w-3.5 h-3.5 text-[#0D99FF] animate-spin shrink-0" />}
-                  {job.status === 'error' && <span className="text-[10px] text-red-400 shrink-0">오류</span>}
+                  {job.status === 'error'      && <span className="text-[10px] text-red-400 shrink-0">오류</span>}
                 </div>
                 {job.status === 'processing' && (
                   <div className="h-1 bg-[#333] rounded-full overflow-hidden">
@@ -306,14 +323,14 @@ export default function ExportModal({ onClose }: Props) {
           </button>
           <button
             onClick={handleExport}
-            disabled={!hasSelection || isRunning}
+            disabled={!hasSelection || isRunning || sets.length === 0}
             className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-[#0D99FF] hover:bg-[#0b87e0] disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-medium transition-colors"
           >
             {isRunning ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
             {isRunning
               ? '렌더링 중...'
               : selectedIds.size > 1
-                ? `${selectedIds.size}개 모두 출력`
+                ? `${selectedIds.size}개 세트 출력`
                 : 'Export MP4'}
           </button>
         </div>
