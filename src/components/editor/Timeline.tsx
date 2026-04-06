@@ -8,9 +8,7 @@ const TRACK_HEIGHT = 28
 const HEADER_HEIGHT = 24
 const TIMELINE_PX_PER_SEC = 80
 
-// LeftSidebar 480px, RightPanel 240px 와 맞춤
-const SIDEBAR_W = 480
-const RIGHT_W   = 240
+const LABEL_W = 72 // track label column width
 
 export default function Timeline() {
   const {
@@ -86,42 +84,32 @@ export default function Timeline() {
   return (
     <div className="bg-[#1A1A1A] border-t border-[#333] flex flex-col shrink-0" style={{ height: 140 }}>
 
-      {/* ── Transport bar — 전체 너비 ── */}
-      <div className="h-9 bg-[#2C2C2C] border-b border-[#333] flex items-center shrink-0">
-        {/* LeftSidebar 영역 자리 맞춤 */}
-        <div className="flex items-center gap-3 px-4" style={{ width: SIDEBAR_W }}>
-          <button
-            onClick={() => { setCurrentTime(0); setIsPlaying(false) }}
-            className="text-[#888] hover:text-[#E0E0E0] transition-colors"
-            title="처음으로"
-          >
-            <SkipBack className="w-4 h-4" />
-          </button>
-          <button
-            onClick={() => setIsPlaying(!isPlaying)}
-            className="bg-[#0D99FF] hover:bg-[#0b87e0] text-white rounded-lg p-1.5 transition-colors"
-          >
-            {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
-          </button>
-          <span className="text-[11px] text-[#888] font-mono">
-            {formatTime(currentTime)} / {formatTime(projectDuration)}
-          </span>
-        </div>
-
-        {/* Canvas 영역 자리 (힌트) */}
-        <div className="flex-1 flex items-center px-3">
-          <span className="text-[10px] text-[#555]">Drag handles to trim · {TIMELINE_PX_PER_SEC}px/s</span>
-        </div>
-
-        {/* RightPanel 자리 */}
-        <div style={{ width: RIGHT_W }} />
+      {/* ── Transport bar ── */}
+      <div className="h-9 bg-[#2C2C2C] border-b border-[#333] flex items-center gap-3 px-4 shrink-0">
+        <button
+          onClick={() => { setCurrentTime(0); setIsPlaying(false) }}
+          className="text-[#888] hover:text-[#E0E0E0] transition-colors"
+          title="처음으로"
+        >
+          <SkipBack className="w-4 h-4" />
+        </button>
+        <button
+          onClick={() => setIsPlaying(!isPlaying)}
+          className="bg-[#0D99FF] hover:bg-[#0b87e0] text-white rounded-lg p-1.5 transition-colors"
+        >
+          {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
+        </button>
+        <span className="text-[11px] text-[#888] font-mono">
+          {formatTime(currentTime)} / {formatTime(projectDuration)}
+        </span>
+        <span className="text-[10px] text-[#555] ml-auto">{TIMELINE_PX_PER_SEC}px/s</span>
       </div>
 
-      {/* ── 트랙 영역 — 3열 구조로 CanvasArea와 정렬 ── */}
+      {/* ── 트랙 영역 ── */}
       <div className="flex flex-1 overflow-hidden">
 
-        {/* 왼쪽 고정 레이블 열 (LeftSidebar 너비) */}
-        <div className="shrink-0 flex flex-col border-r border-[#2a2a2a]" style={{ width: SIDEBAR_W }}>
+        {/* 왼쪽 고정 레이블 열 */}
+        <div className="shrink-0 flex flex-col border-r border-[#2a2a2a]" style={{ width: LABEL_W }}>
           {/* 헤더 눈금 자리 */}
           <div style={{ height: HEADER_HEIGHT }} className="bg-[#222] border-b border-[#333]" />
           {/* Banner 레이블 */}
@@ -226,8 +214,6 @@ export default function Timeline() {
           </div>
         </div>
 
-        {/* 오른쪽 고정 열 (RightPanel 너비) */}
-        <div className="shrink-0 border-l border-[#2a2a2a] bg-[#1A1A1A]" style={{ width: RIGHT_W }} />
       </div>
     </div>
   )

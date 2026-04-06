@@ -105,21 +105,20 @@ export default function LeftSidebar() {
                 onChange={(e) => { processBannerFiles(Array.from(e.target.files ?? [])); e.target.value = '' }} />
             </div>
 
-            {/* 드롭존 */}
+            {/* 에셋 그리드 + 드롭존 overlay */}
             <div
+              className="flex-1 overflow-y-auto p-2 relative"
               onDragOver={(e) => { e.preventDefault(); setBannerDragging(true) }}
-              onDragLeave={() => setBannerDragging(false)}
+              onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setBannerDragging(false) }}
               onDrop={onBannerDrop}
-              onClick={() => bannerInputRef.current?.click()}
-              className={`mx-2 mt-2 mb-1 border border-dashed rounded-lg p-2 text-center text-[10px] transition-colors cursor-pointer shrink-0 ${
-                bannerDragging ? 'border-[#0D99FF] bg-[#0D99FF]/10 text-[#0D99FF]' : 'border-[#3a3a3a] text-[#555] hover:border-[#0D99FF]/50'
-              }`}
             >
-              드래그 또는 클릭
-            </div>
+              {/* 드래그 중 overlay */}
+              {bannerDragging && (
+                <div className="absolute inset-0 z-10 border-2 border-dashed border-[#0D99FF] bg-[#0D99FF]/10 rounded-lg flex items-center justify-center pointer-events-none">
+                  <span className="text-[11px] text-[#0D99FF] font-medium">드롭하여 추가</span>
+                </div>
+              )}
 
-            {/* 배너 그리드 */}
-            <div className="flex-1 overflow-y-auto p-2">
               <div className="grid grid-cols-2 gap-1.5">
                 {bannerAssets.map((asset) => (
                   <button
@@ -139,7 +138,12 @@ export default function LeftSidebar() {
                 ))}
               </div>
               {bannerAssets.length === 0 && (
-                <p className="text-[10px] text-[#444] text-center py-4">배너 없음</p>
+                <div
+                  onClick={() => bannerInputRef.current?.click()}
+                  className="flex flex-col items-center justify-center h-full min-h-[80px] cursor-pointer text-[#444] hover:text-[#555] transition-colors"
+                >
+                  <span className="text-[10px]">드래그 또는 클릭</span>
+                </div>
               )}
             </div>
           </div>
@@ -158,21 +162,20 @@ export default function LeftSidebar() {
                 onChange={(e) => { processVideoFiles(Array.from(e.target.files ?? [])); e.target.value = '' }} />
             </div>
 
-            {/* 드롭존 */}
+            {/* 영상 목록 + 드롭존 overlay */}
             <div
+              className="flex-1 overflow-y-auto p-2 space-y-1 relative"
               onDragOver={(e) => { e.preventDefault(); setVideoDragging(true) }}
-              onDragLeave={() => setVideoDragging(false)}
+              onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setVideoDragging(false) }}
               onDrop={onVideoDrop}
-              onClick={() => videoInputRef.current?.click()}
-              className={`mx-2 mt-2 mb-1 border border-dashed rounded-lg p-2 text-center text-[10px] transition-colors cursor-pointer shrink-0 ${
-                videoDragging ? 'border-[#8B5CF6] bg-[#8B5CF6]/10 text-[#8B5CF6]' : 'border-[#3a3a3a] text-[#555] hover:border-[#8B5CF6]/50'
-              }`}
             >
-              드래그 또는 클릭
-            </div>
+              {/* 드래그 중 overlay */}
+              {videoDragging && (
+                <div className="absolute inset-0 z-10 border-2 border-dashed border-[#8B5CF6] bg-[#8B5CF6]/10 rounded-lg flex items-center justify-center pointer-events-none">
+                  <span className="text-[11px] text-[#8B5CF6] font-medium">드롭하여 추가</span>
+                </div>
+              )}
 
-            {/* 영상 목록 */}
-            <div className="flex-1 overflow-y-auto p-2 space-y-1">
               {videoAssets.map((asset) => (
                 <button
                   key={asset.id}
@@ -191,7 +194,12 @@ export default function LeftSidebar() {
                 </button>
               ))}
               {videoAssets.length === 0 && (
-                <p className="text-[10px] text-[#444] text-center py-4">영상 없음</p>
+                <div
+                  onClick={() => videoInputRef.current?.click()}
+                  className="flex flex-col items-center justify-center h-full min-h-[80px] cursor-pointer text-[#444] hover:text-[#555] transition-colors"
+                >
+                  <span className="text-[10px]">드래그 또는 클릭</span>
+                </div>
               )}
             </div>
           </div>
