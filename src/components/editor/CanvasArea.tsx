@@ -190,7 +190,15 @@ export default function CanvasArea() {
   useEffect(() => {
     const video = videoRef.current
     if (!video || !activeVideo || !videoAsset) return
-    if (video.src !== videoAsset.url) video.src = videoAsset.url
+
+    // src가 바뀌면 로드 후 seeked 이벤트에서 그림
+    if (video.src !== videoAsset.url) {
+      video.src = videoAsset.url
+      const onLoaded = () => {
+        video.currentTime = currentTime * activeVideo.speed
+      }
+      video.addEventListener('loadedmetadata', onLoaded, { once: true })
+    }
 
     if (isPlaying) {
       video.play()
@@ -202,10 +210,17 @@ export default function CanvasArea() {
       animFrameRef.current = requestAnimationFrame(tick)
     } else {
       video.pause()
-      video.currentTime = currentTime * activeVideo.speed
-      drawFrame()
       cancelAnimationFrame(animFrameRef.current)
+
+      // seeked 이벤트 후 그려야 프레임이 확실히 디코딩됨
+      const onSeeked = () => drawFrame()
+      video.addEventListener('seeked', onSeeked, { once: true })
+      video.currentTime = currentTime * activeVideo.speed
+
+      // src 변경 없이 이미 해당 위치면 seeked가 안 올 수 있으므로 fallback
+      if (video.readyState >= 2) drawFrame()
     }
+
     return () => cancelAnimationFrame(animFrameRef.current)
   }, [isPlaying, activeVideo, videoAsset, currentTime, drawFrame, setCurrentTime])
 
