@@ -238,18 +238,18 @@ export default function LeftSidebar() {
         </div>
       )}
 
-      {/* 하단 버튼 */}
-      {activeBanner && activeVideo && (
-        <div className="p-3 border-t border-[#333] shrink-0">
-          <button
-            onClick={saveSet}
-            className="w-full flex items-center justify-center gap-2 bg-[#0D99FF] hover:bg-[#0b87e0] text-white text-xs font-medium py-1.5 rounded-lg transition-colors"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            세트로 등록
-          </button>
-        </div>
-      )}
+      {/* 하단 버튼 — 항상 표시 */}
+      <div className="p-3 border-t border-[#333] shrink-0">
+        <button
+          onClick={saveSet}
+          disabled={!activeBanner || !activeVideo}
+          className="w-full flex items-center justify-center gap-2 bg-[#0D99FF] hover:bg-[#0b87e0] disabled:opacity-30 disabled:cursor-not-allowed text-white text-xs font-medium rounded-lg transition-colors"
+          style={{ height: 56 }}
+        >
+          <Plus className="w-3.5 h-3.5" />
+          세트로 등록
+        </button>
+      </div>
     </aside>
   )
 }

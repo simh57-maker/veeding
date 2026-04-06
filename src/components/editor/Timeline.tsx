@@ -173,22 +173,25 @@ export default function Timeline() {
             {/* 트랙들 */}
             <div style={{ paddingTop: HEADER_HEIGHT }}>
 
-              {/* Banner 트랙 */}
+              {/* Banner 트랙 — 영상 트랙 범위에 연동 */}
               <div className="relative border-b border-[#2a2a2a]" style={{ height: TRACK_HEIGHT }}>
-                {activeBanner && bannerAsset && (
-                  <div className="absolute top-1" style={{ left: timeToX(activeBanner.inPoint) }}>
-                    <div
-                      className="relative flex items-center bg-[#1a4d3a] border border-[#2a7a5a] rounded overflow-hidden"
-                      style={{ width: timeToX(activeBanner.outPoint - activeBanner.inPoint), height: TRACK_HEIGHT - 8 }}
-                    >
-                      <span className="text-[9px] text-[#4dbb88] px-2 truncate flex-1">{bannerAsset.name}</span>
-                      <div className="absolute left-0 top-0 w-2 h-full bg-[#4dbb88] opacity-0 hover:opacity-100 cursor-ew-resize rounded-l"
-                        onMouseDown={(e) => startDrag(e, 'bannerIn', activeBanner.inPoint)} />
-                      <div className="absolute right-0 top-0 w-2 h-full bg-[#4dbb88] opacity-0 hover:opacity-100 cursor-ew-resize rounded-r"
-                        onMouseDown={(e) => startDrag(e, 'bannerOut', activeBanner.outPoint)} />
+                {activeBanner && bannerAsset && (() => {
+                  // 배너 표시 범위는 영상 트랙이 있으면 그 범위를 따름
+                  const bIn  = activeVideo ? activeVideo.inPoint / activeVideo.speed : activeBanner.inPoint
+                  const bOut = activeVideo
+                    ? (activeVideo.outPoint - activeVideo.inPoint) / activeVideo.speed
+                    : activeBanner.outPoint - activeBanner.inPoint
+                  return (
+                    <div className="absolute top-1" style={{ left: timeToX(bIn) }}>
+                      <div
+                        className="relative flex items-center bg-[#1a4d3a] border border-[#2a7a5a] rounded overflow-hidden"
+                        style={{ width: timeToX(bOut), height: TRACK_HEIGHT - 8 }}
+                      >
+                        <span className="text-[9px] text-[#4dbb88] px-2 truncate flex-1">{bannerAsset.name}</span>
+                      </div>
                     </div>
-                  </div>
-                )}
+                  )
+                })()}
               </div>
 
               {/* Video 트랙 */}

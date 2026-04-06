@@ -65,6 +65,11 @@ export interface CompositionSet {
   projectDuration: number
 }
 
+interface HistoryEntry {
+  activeVideo: VideoClip | null
+  activeBanner: BannerClip | null
+}
+
 export interface EditorState {
   quality: Quality
   projectDuration: number
@@ -82,6 +87,10 @@ export interface EditorState {
   sets: CompositionSet[]
   activeSetId: string | null
 
+  // undo/redo
+  _history: HistoryEntry[]
+  _historyIndex: number
+
   setQuality: (q: Quality) => void
   setCurrentTime: (t: number) => void
   setIsPlaying: (v: boolean) => void
@@ -96,6 +105,11 @@ export interface EditorState {
 
   updateVideoClip: (partial: Partial<VideoClip>) => void
   updateBannerClip: (partial: Partial<BannerClip>) => void
+
+  // undo/redo에 스냅샷 저장 (드래그 끝날 때 호출)
+  pushHistory: () => void
+  undo: () => void
+  redo: () => void
 
   autoCompose: () => void
 
@@ -119,6 +133,9 @@ export const useEditorStore = create<EditorState>((set, get) => ({
 
   sets: [],
   activeSetId: null,
+
+  _history: [],
+  _historyIndex: -1,
 
   setQuality: (q) => set({ quality: q }),
   setCurrentTime: (t) => set({ currentTime: t }),
@@ -149,6 +166,41 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   updateBannerClip: (partial) =>
     set((s) => s.activeBanner ? { activeBanner: { ...s.activeBanner, ...partial } } : {}),
 
+  pushHistory: () => {
+    const { activeVideo, activeBanner, _history, _historyIndex } = get()
+    const entry: HistoryEntry = {
+      activeVideo: activeVideo ? { ...activeVideo } : null,
+      activeBanner: activeBanner ? { ...activeBanner } : null,
+    }
+    // 현재 인덱스 이후의 히스토리는 버림
+    const newHistory = [..._history.slice(0, _historyIndex + 1), entry]
+    // 최대 50개 유지
+    const trimmed = newHistory.length > 50 ? newHistory.slice(newHistory.length - 50) : newHistory
+    set({ _history: trimmed, _historyIndex: trimmed.length - 1 })
+  },
+
+  undo: () => {
+    const { _history, _historyIndex } = get()
+    if (_historyIndex <= 0) return
+    const prev = _history[_historyIndex - 1]
+    set({
+      activeVideo: prev.activeVideo ? { ...prev.activeVideo } : null,
+      activeBanner: prev.activeBanner ? { ...prev.activeBanner } : null,
+      _historyIndex: _historyIndex - 1,
+    })
+  },
+
+  redo: () => {
+    const { _history, _historyIndex } = get()
+    if (_historyIndex >= _history.length - 1) return
+    const next = _history[_historyIndex + 1]
+    set({
+      activeVideo: next.activeVideo ? { ...next.activeVideo } : null,
+      activeBanner: next.activeBanner ? { ...next.activeBanner } : null,
+      _historyIndex: _historyIndex + 1,
+    })
+  },
+
   autoCompose: () => {
     const { activeBanner, activeVideo, videoAssets, bannerAssets } = get()
     if (!activeBanner || !activeVideo) return
@@ -169,10 +221,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     if (bannerAsset.alphaBounds) {
       const { x, y, width, height } = bannerAsset.alphaBounds
 
-      // ① 영상 높이를 알파 영역 높이에 맞추고 비율 유지 (height-fit)
       const scale = height / videoAsset.height
-
-      // ② 영상 중심 = 알파 영역 중심
       const centerX = x + width / 2
       const centerY = y + height / 2
 

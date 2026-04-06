@@ -4,7 +4,7 @@ import { useEffect, useRef, useCallback, useState } from 'react'
 import { useEditorStore } from '@/store/editorStore'
 
 const CANVAS_PADDING = 40
-const HANDLE_SIZE = 8  // 코너 핸들 반지름 (px, 캔버스 좌표)
+const HANDLE_SIZE = 8
 
 type DragMode =
   | { type: 'move' }
@@ -12,14 +12,15 @@ type DragMode =
 
 interface DragState {
   mode: DragMode
-  startMouseX: number  // 화면 px
+  startMouseX: number
   startMouseY: number
-  startX: number       // 캔버스 px (영상 중심)
+  startX: number
   startY: number
   startScaleX: number
   startScaleY: number
-  startW: number       // 영상 렌더 너비 = videoAsset.width * scaleX
+  startW: number
   startH: number
+  shiftLock: 'none' | 'x' | 'y'  // shift 축 잠금
 }
 
 export default function CanvasArea() {
@@ -35,6 +36,7 @@ export default function CanvasArea() {
     bannerAssets, videoAssets,
     currentTime, isPlaying,
     setCurrentTime, setIsPlaying, setSelectedLayer, updateVideoClip,
+    pushHistory, undo, redo,
   } = useEditorStore()
 
   const bannerAsset = activeBanner ? bannerAssets.find((b) => b.id === activeBanner.assetId) : null
@@ -43,7 +45,6 @@ export default function CanvasArea() {
   const canvasW = bannerAsset?.width  ?? 1920
   const canvasH = bannerAsset?.height ?? 1080
 
-  // ── 스케일 계산 ──────────────────────────────────────────
   const getScale = useCallback(() => {
     const c = containerRef.current
     if (!c) return 1
@@ -52,7 +53,6 @@ export default function CanvasArea() {
     return Math.min(availW / canvasW, availH / canvasH, 1)
   }, [canvasW, canvasH])
 
-  // ── 마우스 → 캔버스 좌표 ────────────────────────────────
   const toCanvas = useCallback((ex: number, ey: number) => {
     const canvas = canvasRef.current
     if (!canvas) return { x: 0, y: 0 }
@@ -64,7 +64,6 @@ export default function CanvasArea() {
     }
   }, [getScale])
 
-  // ── 영상 렌더 박스 ───────────────────────────────────────
   const getVideoBox = useCallback(() => {
     if (!activeVideo || !videoAsset) return null
     const rw = videoAsset.width  * activeVideo.scaleX
@@ -80,7 +79,6 @@ export default function CanvasArea() {
     }
   }, [activeVideo, videoAsset])
 
-  // ── 코너 핸들 위치 4개 ────────────────────────────────────
   const getHandles = useCallback(() => {
     const box = getVideoBox()
     if (!box) return []
@@ -92,7 +90,6 @@ export default function CanvasArea() {
     ]
   }, [getVideoBox])
 
-  // ── 그리기 ───────────────────────────────────────────────
   const drawFrame = useCallback(() => {
     const canvas = canvasRef.current
     const video  = videoRef.current
@@ -103,8 +100,8 @@ export default function CanvasArea() {
     ctx.clearRect(0, 0, canvasW, canvasH)
     drawCheckerboard(ctx, canvasW, canvasH)
 
-    // 영상 레이어 (플레이 중에는 숨김)
-    if (!isPlaying && activeVideo && video && videoAsset) {
+    // 영상 레이어
+    if (activeVideo && video && videoAsset) {
       const { rw, rh, l, t } = getVideoBox()!
       ctx.drawImage(video, l, t, rw, rh)
     }
@@ -117,17 +114,15 @@ export default function CanvasArea() {
       if (img) ctx.drawImage(img, activeBanner.x - bw / 2, activeBanner.y - bh / 2, bw, bh)
     }
 
-    // 영상 선택 핸들 (영상 레이어 선택 시)
-    if (activeVideo && videoAsset) {
+    // 영상 선택 핸들 — 재생 중에는 숨김
+    if (!isPlaying && activeVideo && videoAsset) {
       const box = getVideoBox()!
-      // 선택 테두리
       ctx.strokeStyle = 'rgba(13, 153, 255, 0.8)'
       ctx.lineWidth   = 2
       ctx.setLineDash([6, 3])
       ctx.strokeRect(box.l, box.t, box.rw, box.rh)
       ctx.setLineDash([])
 
-      // 코너 핸들
       for (const h of getHandles()) {
         ctx.fillStyle   = '#fff'
         ctx.strokeStyle = '#0D99FF'
@@ -138,7 +133,7 @@ export default function CanvasArea() {
     }
   }, [isPlaying, activeVideo, activeBanner, bannerAsset, videoAsset, canvasW, canvasH, getVideoBox, getHandles])
 
-  // ── 애니메이션 루프 ──────────────────────────────────────
+  // 애니메이션 루프
   useEffect(() => {
     const video = videoRef.current
     if (!video || !activeVideo || !videoAsset) return
@@ -164,21 +159,33 @@ export default function CanvasArea() {
 
   useEffect(() => { drawFrame() }, [drawFrame, activeBanner, activeVideo])
 
-  // ── 스페이스바 단축키 ────────────────────────────────────
+  // 스페이스바 단축키
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.code === 'Space' && !(e.target instanceof HTMLInputElement) && !(e.target instanceof HTMLTextAreaElement)) {
+      const tag = (e.target as HTMLElement)?.tagName
+      if (tag === 'INPUT' || tag === 'TEXTAREA') return
+
+      const ctrl = e.ctrlKey || e.metaKey
+
+      if (e.code === 'Space') {
         e.preventDefault()
         setIsPlaying(!isPlaying)
+        return
+      }
+
+      // Cmd/Ctrl+Z → undo, Cmd/Ctrl+Shift+Z → redo
+      if (ctrl && e.code === 'KeyZ') {
+        e.preventDefault()
+        if (e.shiftKey) redo()
+        else undo()
       }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [isPlaying, setIsPlaying])
+  }, [isPlaying, setIsPlaying, undo, redo])
 
-  // ── 히트 테스트 ──────────────────────────────────────────
   function hitHandle(cx: number, cy: number) {
-    if (!activeVideo) return null
+    if (!activeVideo || isPlaying) return null
     for (const h of getHandles()) {
       if (Math.abs(cx - h.x) <= HANDLE_SIZE && Math.abs(cy - h.y) <= HANDLE_SIZE) return h.id
     }
@@ -191,7 +198,6 @@ export default function CanvasArea() {
     return cx >= box.l && cx <= box.r && cy >= box.t && cy <= box.b
   }
 
-  // ── 마우스 이벤트 ────────────────────────────────────────
   function handleMouseDown(e: React.MouseEvent<HTMLCanvasElement>) {
     if (!activeVideo || !videoAsset) return
     const { x, y } = toCanvas(e.clientX, e.clientY)
@@ -209,6 +215,7 @@ export default function CanvasArea() {
         startScaleY: activeVideo.scaleY,
         startW:      box.rw,
         startH:      box.rh,
+        shiftLock:   'none',
       }
       setSelectedLayer('video')
       return
@@ -225,6 +232,7 @@ export default function CanvasArea() {
         startScaleY: activeVideo.scaleY,
         startW:      0,
         startH:      0,
+        shiftLock:   'none',
       }
       setSelectedLayer('video')
       return
@@ -238,8 +246,7 @@ export default function CanvasArea() {
     const scale = getScale()
 
     if (!dragRef.current) {
-      // 커서 모양 업데이트
-      if (activeVideo) {
+      if (activeVideo && !isPlaying) {
         const corner = hitHandle(x, y)
         if (corner === 'tl' || corner === 'br') { setCursor('nwse-resize'); return }
         if (corner === 'tr' || corner === 'bl') { setCursor('nesw-resize'); return }
@@ -250,20 +257,30 @@ export default function CanvasArea() {
     }
 
     const drag = dragRef.current
-    const dx = (e.clientX - drag.startMouseX) / scale
-    const dy = (e.clientY - drag.startMouseY) / scale
+    let dx = (e.clientX - drag.startMouseX) / scale
+    let dy = (e.clientY - drag.startMouseY) / scale
 
     if (drag.mode.type === 'move') {
+      // Shift 축 잠금: 처음 이동 방향으로 고정
+      if (e.shiftKey) {
+        if (drag.shiftLock === 'none') {
+          if (Math.abs(dx) > Math.abs(dy)) drag.shiftLock = 'x'
+          else if (Math.abs(dy) > Math.abs(dx)) drag.shiftLock = 'y'
+        }
+        if (drag.shiftLock === 'x') dy = 0
+        if (drag.shiftLock === 'y') dx = 0
+      } else {
+        drag.shiftLock = 'none'
+      }
+
       updateVideoClip({
         x: drag.startX + dx,
         y: drag.startY + dy,
       })
     } else {
-      // 리사이즈 — 비율 유지, 드래그한 쪽 코너 기준
-      const corner = drag.mode.corner
-      const aspect = drag.startW / drag.startH  // 원본 비율
+      const corner = (drag.mode as { type: 'resize'; corner: string }).corner
+      const aspect = drag.startW / drag.startH
 
-      // 드래그 델타를 코너 방향으로 환산
       let delta = 0
       if (corner === 'br') delta = (dx + dy) / 2
       if (corner === 'bl') delta = (-dx + dy) / 2
@@ -274,7 +291,6 @@ export default function CanvasArea() {
       const newW = newH * aspect
       const newScale = newH / (videoAsset?.height ?? 1)
 
-      // 중심은 반대쪽 코너를 고정하여 이동
       let newCx = drag.startX
       let newCy = drag.startY
       const dw = (newW - drag.startW) / 2
@@ -292,6 +308,9 @@ export default function CanvasArea() {
   }
 
   function handleMouseUp() {
+    if (dragRef.current) {
+      pushHistory()
+    }
     dragRef.current = null
   }
 
@@ -301,7 +320,6 @@ export default function CanvasArea() {
       className="flex-1 flex items-center justify-center overflow-hidden relative"
       style={{ background: 'radial-gradient(circle at center, #252525 0%, #1A1A1A 100%)' }}
     >
-      {/* 히든 배너 이미지 */}
       <div className="hidden">
         {bannerAssets.map((a) => (
           // eslint-disable-next-line @next/next/no-img-element
