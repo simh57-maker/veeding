@@ -28,6 +28,7 @@ export interface VideoAsset {
   id: string
   name: string
   url: string
+  thumbnailUrl: string
   duration: number
   width: number
   height: number
