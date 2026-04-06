@@ -69,6 +69,7 @@ export default function LeftSidebar({ user }: Props) {
   }
 
   function selectVideo(assetId: string) {
+    if (!activeBanner) return
     const asset = videoAssets.find((v) => v.id === assetId)
     if (!asset) return
     setActiveVideo({ assetId, inPoint: 0, outPoint: asset.duration, speed: 1, x: 0, y: 0, scaleX: 1, scaleY: 1 })
@@ -86,11 +87,14 @@ export default function LeftSidebar({ user }: Props) {
           </div>
           <span className="text-white font-bold text-sm tracking-wide">Veeding</span>
         </div>
-        <div className="flex items-center gap-2">
-          {user.image && (
+        <div title={user.email} className="cursor-default">
+          {user.image ? (
             <NextImage src={user.image} alt={user.name} width={22} height={22} className="rounded-full" />
+          ) : (
+            <div className="w-[22px] h-[22px] rounded-full bg-[#444] flex items-center justify-center">
+              <span className="text-[10px] text-[#888]">{user.name?.[0] ?? '?'}</span>
+            </div>
           )}
-          <span className="text-[#555] text-[11px] truncate max-w-[120px]">{user.email}</span>
         </div>
       </div>
 
@@ -171,7 +175,7 @@ export default function LeftSidebar({ user }: Props) {
           </div>
 
           {/* ── 아래쪽: Video (보라 라인) ── */}
-          <div className={`flex-1 flex flex-col overflow-hidden relative ${!activeBanner ? 'opacity-40 pointer-events-none' : ''}`}>
+          <div className={`flex-1 flex flex-col overflow-hidden relative ${!activeBanner ? 'opacity-40' : ''}`}>
             {/* 헤더 */}
             <div className="flex items-center justify-between px-3 py-2 bg-[#8B5CF6]/10 border-b border-[#8B5CF6]/20 border-l-2 border-l-[#8B5CF6] shrink-0">
               <div className="flex items-center gap-1.5 text-[#8B5CF6] text-[11px] font-semibold">
