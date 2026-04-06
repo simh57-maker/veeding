@@ -109,7 +109,7 @@ export interface EditorState {
   undo: () => void
   redo: () => void
 
-  autoCompose: (overrideBanner?: BannerClip, overrideVideo?: VideoClip) => void
+  autoCompose: () => void
 
   // 세트 관련
   saveSet: () => void
@@ -199,39 +199,40 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     })
   },
 
-  autoCompose: (overrideBanner?: BannerClip, overrideVideo?: VideoClip) => {
-    const { videoAssets, bannerAssets } = get()
-    const activeBanner = overrideBanner ?? get().activeBanner
-    const activeVideo  = overrideVideo  ?? get().activeVideo
+  autoCompose: () => {
+    const { activeBanner, activeVideo, videoAssets, bannerAssets } = get()
     if (!activeBanner || !activeVideo) return
 
     const bannerAsset = bannerAssets.find((b) => b.id === activeBanner.assetId)
-    const videoAsset  = videoAssets.find((v)  => v.id  === activeVideo.assetId)
+    const videoAsset = videoAssets.find((v) => v.id === activeVideo.assetId)
     if (!videoAsset || !bannerAsset) return
 
     const inPoint = activeVideo.inPoint
     const outPoint = Math.min(activeVideo.outPoint, videoAsset.duration)
     const clipDuration = (outPoint - inPoint) / activeVideo.speed
 
-    let newVideo: VideoClip = { ...activeVideo }
-
-    if (bannerAsset.alphaBounds) {
-      const { x, y, width, height } = bannerAsset.alphaBounds
-      const scale = (height / videoAsset.height) * 1.01
-      newVideo = {
-        ...newVideo,
-        x: x + width / 2,
-        y: y + height / 2,
-        scaleX: scale,
-        scaleY: scale,
-      }
-    }
-
     set({
       projectDuration: clipDuration,
       activeBanner: { ...activeBanner, inPoint: 0, outPoint: clipDuration },
-      activeVideo: newVideo,
     })
+
+    if (bannerAsset.alphaBounds) {
+      const { x, y, width, height } = bannerAsset.alphaBounds
+
+      const scale = (height / videoAsset.height) * 1.01
+      const centerX = x + width / 2
+      const centerY = y + height / 2
+
+      set({
+        activeVideo: {
+          ...get().activeVideo!,
+          x: centerX,
+          y: centerY,
+          scaleX: scale,
+          scaleY: scale,
+        },
+      })
+    }
   },
 
   saveSet: () => {

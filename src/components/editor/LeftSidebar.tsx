@@ -58,17 +58,15 @@ export default function LeftSidebar() {
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   function selectBanner(assetId: string) {
-    const newBanner = { assetId, inPoint: 0, outPoint: 99999, x: 0, y: 0, scaleX: 1, scaleY: 1 }
-    setActiveBanner(newBanner)
-    if (activeVideo) autoCompose(newBanner, activeVideo)
+    setActiveBanner({ assetId, inPoint: 0, outPoint: 99999, x: 0, y: 0, scaleX: 1, scaleY: 1 })
+    if (activeVideo) autoCompose()
   }
 
   function selectVideo(assetId: string) {
     const asset = videoAssets.find((v) => v.id === assetId)
     if (!asset) return
-    const newVideo = { assetId, inPoint: 0, outPoint: asset.duration, speed: 1, x: 0, y: 0, scaleX: 1, scaleY: 1 }
-    setActiveVideo(newVideo)
-    if (activeBanner) autoCompose(activeBanner, newVideo)
+    setActiveVideo({ assetId, inPoint: 0, outPoint: asset.duration, speed: 1, x: 0, y: 0, scaleX: 1, scaleY: 1 })
+    if (activeBanner) autoCompose()
   }
 
   // w-60의 2배 = w-[480px]
