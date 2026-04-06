@@ -115,7 +115,7 @@ export default function CanvasArea() {
     if (!ctx) return
 
     ctx.clearRect(0, 0, canvasW, canvasH)
-    drawCheckerboard(ctx, canvasW, canvasH)
+    if (activeBanner) drawCheckerboard(ctx, canvasW, canvasH)
 
     // 영상 레이어
     if (activeVideo && video && videoAsset) {

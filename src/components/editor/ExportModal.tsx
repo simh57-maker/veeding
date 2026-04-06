@@ -17,15 +17,7 @@ interface ExportJob {
   progress: number        // 0~100
   remainSec: number | null  // 남은 초 (렌더 중 실시간)
   totalSec: number | null   // 이 세트 실제 소요 (완료 후)
-  estSec: number            // 사전 추정 (idle 상태에서 표시)
   error?: string
-}
-
-// 사전 추정 계수 (fallback용 — 실측 후 대체됨)
-function estimateSeconds(widthPx: number, heightPx: number, durationSec: number, crf: number): number {
-  const megapixels = (widthPx * heightPx) / 1_000_000
-  const crfFactor = crf <= 28 ? 2.75 : 1.65
-  return Math.max(1, Math.round(megapixels * durationSec * crfFactor))
 }
 
 function fmtRemain(s: number): string {
@@ -34,11 +26,6 @@ function fmtRemain(s: number): string {
   const m = Math.floor(s / 60)
   const sec = Math.ceil(s % 60)
   return sec > 0 ? `${m}분 ${sec}초 남음` : `${m}분 남음`
-}
-
-function fmtEst(s: number): string {
-  if (s < 60) return `약 ${s}초`
-  return `약 ${Math.ceil(s / 60)}분`
 }
 
 export default function ExportModal({ onClose }: Props) {
@@ -52,7 +39,6 @@ export default function ExportModal({ onClose }: Props) {
   const [jobs, setJobs] = useState<ExportJob[]>([])
   const [isRunning, setIsRunning] = useState(false)
   const downloadLinkRef = useRef<HTMLAnchorElement>(null)
-  // 실측 계수: MP당 초당 렌더 시간 (첫 세트 완료 후 갱신)
   const measuredFactorRef = useRef<number | null>(null)
 
   const qualityCfg = QUALITY_MAP[quality]
@@ -77,14 +63,6 @@ export default function ExportModal({ onClose }: Props) {
     const bAsset = bannerAssets.find((b) => b.id === s.banner.assetId)
     return { w: bAsset?.width ?? resW, h: bAsset?.height ?? resH }
   }
-
-  // 선택된 세트 사전 예상 합계
-  const totalEstSec = Array.from(selectedIds).reduce((acc, id) => {
-    const s = sets.find((x) => x.id === id)
-    if (!s) return acc
-    const { w, h } = getSetDimensions(s)
-    return acc + estimateSeconds(w, h, s.projectDuration, qualityCfg.crf)
-  }, 0)
 
   // ─── 단일 세트 렌더링 ───────────────────────────────────
   async function renderOne(
@@ -164,18 +142,14 @@ export default function ExportModal({ onClose }: Props) {
       .map((id) => sets.find((s) => s.id === id))
       .filter(Boolean) as CompositionSet[]
 
-    const jobList: ExportJob[] = selectedSets.map((s) => {
-      const { w, h } = getSetDimensions(s)
-      return {
-        setId: s.id,
-        label: s.name,
-        status: 'idle',
-        progress: 0,
-        remainSec: null,
-        totalSec: null,
-        estSec: estimateSeconds(w, h, s.projectDuration, qualityCfg.crf),
-      }
-    })
+    const jobList: ExportJob[] = selectedSets.map((s) => ({
+      setId: s.id,
+      label: s.name,
+      status: 'idle',
+      progress: 0,
+      remainSec: null,
+      totalSec: null,
+    }))
     setJobs(jobList)
 
     try {
@@ -194,16 +168,7 @@ export default function ExportModal({ onClose }: Props) {
         const found = selectedSets[i]
         const { w, h } = getSetDimensions(found)
 
-        // 실측 계수가 있으면 idle 세트의 예상 시간 업데이트
-        if (measuredFactorRef.current !== null) {
-          const newEst = Math.max(1, Math.round(
-            (w * h / 1_000_000) * found.projectDuration * measuredFactorRef.current
-          ))
-          jobList[i] = { ...jobList[i], estSec: newEst }
-          setJobs([...jobList])
-        }
-
-        updateJob(i, jobList, { status: 'processing', remainSec: jobList[i].estSec })
+        updateJob(i, jobList, { status: 'processing', remainSec: null })
         const startTs = performance.now()
 
         try {
@@ -227,7 +192,6 @@ export default function ExportModal({ onClose }: Props) {
           // 실측 계수 갱신 (MP당 초당)
           const mp = (w * h) / 1_000_000
           const newFactor = elapsed / (mp * found.projectDuration)
-          // 누적 평균으로 부드럽게 갱신
           measuredFactorRef.current = measuredFactorRef.current === null
             ? newFactor
             : (measuredFactorRef.current + newFactor) / 2
@@ -275,13 +239,6 @@ export default function ExportModal({ onClose }: Props) {
           </button>
         </div>
 
-        {/* 품질 / 해상도 요약 */}
-        <div className="bg-[#1E1E1E] rounded-xl p-3 mb-4 flex gap-4 text-[11px]">
-          <InfoRow label="크기" value={activeBannerAsset ? `${resW} × ${resH}` : '배너 미선택'} />
-          <InfoRow label="품질" value={QUALITY_MAP[quality].label} />
-          <InfoRow label="포맷" value="MP4 H.264" />
-        </div>
-
         {/* 세트 선택 */}
         <div className="mb-4">
           <div className="flex items-center justify-between mb-2">
@@ -305,13 +262,12 @@ export default function ExportModal({ onClose }: Props) {
             <div className="space-y-1 max-h-44 overflow-y-auto">
               {sets.map((s) => {
                 const { w, h } = getSetDimensions(s)
-                const est = estimateSeconds(w, h, s.projectDuration, qualityCfg.crf)
                 return (
                   <SelectRow
                     key={s.id}
                     id={s.id}
                     label={s.name}
-                    sub={`${s.projectDuration.toFixed(1)}s · ${w}×${h} · ${fmtEst(est)}`}
+                    sub={`${s.projectDuration.toFixed(1)}s · ${w}×${h}`}
                     checked={selectedIds.has(s.id)}
                     onChange={() => toggleId(s.id)}
                   />
@@ -320,14 +276,6 @@ export default function ExportModal({ onClose }: Props) {
             </div>
           )}
         </div>
-
-        {/* 총 예상 시간 (렌더 전) */}
-        {selectedIds.size > 0 && jobs.length === 0 && (
-          <div className="mb-4 bg-[#1E1E1E] rounded-lg px-3 py-2 flex items-center justify-between">
-            <span className="text-[11px] text-[#666]">총 예상 렌더 시간</span>
-            <span className="text-[11px] text-[#E0E0E0] font-medium">{fmtEst(totalEstSec)}</span>
-          </div>
-        )}
 
         {/* 진행 상황 */}
         {jobs.length > 0 && (
@@ -353,9 +301,6 @@ export default function ExportModal({ onClose }: Props) {
                         <Loader2 className="w-3.5 h-3.5 text-[#0D99FF] animate-spin" />
                       </>
                     )}
-                    {job.status === 'idle' && (
-                      <span className="text-[10px] text-[#555]">{fmtEst(job.estSec)}</span>
-                    )}
                     {job.status === 'error' && (
                       <span className="text-[10px] text-red-400">오류</span>
                     )}
@@ -378,13 +323,6 @@ export default function ExportModal({ onClose }: Props) {
                 )}
               </div>
             ))}
-          </div>
-        )}
-
-        {allDone && (
-          <div className="mb-4 flex items-center gap-2 text-[#4dbb88] text-sm">
-            <CheckCircle className="w-4 h-4" />
-            모든 내보내기 완료!
           </div>
         )}
 
@@ -412,15 +350,29 @@ export default function ExportModal({ onClose }: Props) {
           </button>
         </div>
       </div>
-    </div>
-  )
-}
 
-function InfoRow({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex flex-col gap-0.5">
-      <span className="text-[10px] text-[#555]">{label}</span>
-      <span className="text-[11px] text-[#E0E0E0] font-medium">{value}</span>
+      {/* 완료 모달 오버레이 */}
+      {allDone && (
+        <div className="absolute inset-0 flex items-center justify-center bg-black/70 backdrop-blur-sm rounded-2xl z-10">
+          <div className="bg-[#2C2C2C] border border-[#444] rounded-2xl p-8 flex flex-col items-center gap-4 shadow-2xl">
+            <div className="w-16 h-16 rounded-full bg-[#4dbb88]/20 flex items-center justify-center">
+              <CheckCircle className="w-9 h-9 text-[#4dbb88]" />
+            </div>
+            <div className="text-center">
+              <div className="text-white font-semibold text-lg mb-1">출력 완료!</div>
+              <div className="text-[#888] text-sm">
+                {jobs.filter((j) => j.status === 'done').length}개 영상이 다운로드되었습니다
+              </div>
+            </div>
+            <button
+              onClick={onClose}
+              className="mt-2 px-8 py-2.5 rounded-xl bg-[#0D99FF] hover:bg-[#0b87e0] text-white text-sm font-medium transition-colors"
+            >
+              닫기
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

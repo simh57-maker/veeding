@@ -109,12 +109,12 @@ export default function LeftSidebar({ user }: Props) {
         </TabBtn>
       </div>
 
-      {/* ═══ ASSETS 탭 — 가로 2열 ══════════════════════════ */}
+      {/* ═══ ASSETS 탭 — 세로 2행 ══════════════════════════ */}
       {tab === 'assets' && (
-        <div className="flex flex-1 overflow-hidden">
+        <div className="flex flex-col flex-1 overflow-hidden">
 
-          {/* ── 왼쪽 열: Banner (파란 라인) ── */}
-          <div className="flex-1 flex flex-col border-r border-[#333] overflow-hidden">
+          {/* ── 위쪽: Banner (파란 라인) ── */}
+          <div className="flex-1 flex flex-col border-b border-[#333] overflow-hidden">
             {/* 헤더 */}
             <div className="flex items-center justify-between px-3 py-2 bg-[#0D99FF]/10 border-b border-[#0D99FF]/20 border-l-2 border-l-[#0D99FF] shrink-0">
               <div className="flex items-center gap-1.5 text-[#0D99FF] text-[11px] font-semibold">
@@ -170,8 +170,8 @@ export default function LeftSidebar({ user }: Props) {
             </div>
           </div>
 
-          {/* ── 오른쪽 열: Video (보라 라인) ── */}
-          <div className="flex-1 flex flex-col overflow-hidden">
+          {/* ── 아래쪽: Video (보라 라인) ── */}
+          <div className={`flex-1 flex flex-col overflow-hidden relative ${!activeBanner ? 'opacity-40 pointer-events-none' : ''}`}>
             {/* 헤더 */}
             <div className="flex items-center justify-between px-3 py-2 bg-[#8B5CF6]/10 border-b border-[#8B5CF6]/20 border-l-2 border-l-[#8B5CF6] shrink-0">
               <div className="flex items-center gap-1.5 text-[#8B5CF6] text-[11px] font-semibold">
@@ -224,6 +224,13 @@ export default function LeftSidebar({ user }: Props) {
                 </div>
               )}
             </div>
+
+            {/* 배너 미선택 안내 */}
+            {!activeBanner && (
+              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                <span className="text-[10px] text-[#555] text-center px-3">배너를 먼저 선택하세요</span>
+              </div>
+            )}
           </div>
         </div>
       )}
