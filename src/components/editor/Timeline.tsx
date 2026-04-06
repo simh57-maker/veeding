@@ -74,9 +74,14 @@ export default function Timeline() {
   const videoAsset  = activeVideo  ? videoAssets.find((v) => v.id === activeVideo.assetId)  : null
   const bannerAsset = activeBanner ? bannerAssets.find((b) => b.id === activeBanner.assetId) : null
 
+  // 1s 단위 고정, 마지막 틱은 반드시 projectDuration 끝값
   const ticks: number[] = []
-  const tickInterval = projectDuration > 30 ? 5 : projectDuration > 10 ? 2 : 1
-  for (let t = 0; t <= projectDuration + tickInterval; t += tickInterval) ticks.push(t)
+  const end = Math.ceil(projectDuration)
+  for (let t = 0; t <= end; t++) ticks.push(t)
+  // 끝값이 정수가 아닌 경우 정확한 끝 틱 추가
+  if (projectDuration % 1 !== 0 && !ticks.includes(projectDuration)) {
+    ticks.push(parseFloat(projectDuration.toFixed(2)))
+  }
 
   return (
     <div className="bg-[#1A1A1A] border-t border-[#333] flex flex-col shrink-0" style={{ height: 140 }}>
@@ -150,12 +155,17 @@ export default function Timeline() {
               className="absolute top-0 left-0 right-0 bg-[#222] border-b border-[#333]"
               style={{ height: HEADER_HEIGHT }}
             >
-              {ticks.map((t) => (
-                <div key={t} className="absolute top-0 flex flex-col items-center" style={{ left: timeToX(t) }}>
-                  <div className="w-px h-3 bg-[#444]" />
-                  <span className="text-[9px] text-[#555] mt-0.5">{t}s</span>
-                </div>
-              ))}
+              {ticks.map((t) => {
+                const isEnd = t === ticks[ticks.length - 1]
+                return (
+                  <div key={t} className="absolute top-0 flex flex-col items-center" style={{ left: timeToX(t) }}>
+                    <div className={`w-px bg-[#444] ${isEnd ? 'h-full' : 'h-3'}`} style={isEnd ? { height: HEADER_HEIGHT } : {}} />
+                    <span className={`mt-0.5 font-mono ${isEnd ? 'text-[9px] text-[#FF4D4D]' : 'text-[9px] text-[#555]'}`}>
+                      {Number.isInteger(t) ? `${t}s` : `${t.toFixed(2)}s`}
+                    </span>
+                  </div>
+                )
+              })}
             </div>
 
             {/* 트랙들 */}
