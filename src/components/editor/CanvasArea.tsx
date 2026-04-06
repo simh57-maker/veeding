@@ -337,29 +337,41 @@ export default function CanvasArea() {
       const handle = (drag.mode as { type: 'resize'; handle: HandleId }).handle
       const aspect = drag.startW / drag.startH
 
-      // 코너: 비율 유지 리사이즈
+      // 코너: Shift = 비율 유지, 기본 = 자유 변형
       if (['tl','tr','bl','br'].includes(handle)) {
-        let delta = 0
-        if (handle === 'br') delta = (dx + dy) / 2
-        if (handle === 'bl') delta = (-dx + dy) / 2
-        if (handle === 'tr') delta = (dx - dy) / 2
-        if (handle === 'tl') delta = (-dx - dy) / 2
-
-        const newH = Math.max(50, drag.startH + delta)
-        const newW = newH * aspect
-        const newScale = newH / (videoAsset?.height ?? 1)
-
+        let newW = drag.startW
+        let newH = drag.startH
         let newCx = drag.startX
         let newCy = drag.startY
+
+        if (e.shiftKey) {
+          // 비율 유지: 대각선 델타로 균일 스케일
+          let delta = 0
+          if (handle === 'br') delta = (dx + dy) / 2
+          if (handle === 'bl') delta = (-dx + dy) / 2
+          if (handle === 'tr') delta = (dx - dy) / 2
+          if (handle === 'tl') delta = (-dx - dy) / 2
+
+          newH = Math.max(50, drag.startH + delta)
+          newW = newH * aspect
+        } else {
+          // 자유 변형
+          if (handle === 'br') { newW = Math.max(50, drag.startW + dx); newH = Math.max(50, drag.startH + dy) }
+          if (handle === 'bl') { newW = Math.max(50, drag.startW - dx); newH = Math.max(50, drag.startH + dy) }
+          if (handle === 'tr') { newW = Math.max(50, drag.startW + dx); newH = Math.max(50, drag.startH - dy) }
+          if (handle === 'tl') { newW = Math.max(50, drag.startW - dx); newH = Math.max(50, drag.startH - dy) }
+        }
+
         const dw = (newW - drag.startW) / 2
         const dh = (newH - drag.startH) / 2
-
         if (handle === 'br') { newCx = drag.startX + dw; newCy = drag.startY + dh }
         if (handle === 'bl') { newCx = drag.startX - dw; newCy = drag.startY + dh }
         if (handle === 'tr') { newCx = drag.startX + dw; newCy = drag.startY - dh }
         if (handle === 'tl') { newCx = drag.startX - dw; newCy = drag.startY - dh }
 
-        updateVideoClip({ x: newCx, y: newCy, scaleX: newScale, scaleY: newScale })
+        const newScaleX = newW / (videoAsset?.width  ?? 1)
+        const newScaleY = newH / (videoAsset?.height ?? 1)
+        updateVideoClip({ x: newCx, y: newCy, scaleX: newScaleX, scaleY: newScaleY })
 
       } else {
         // 엣지: 한 축만 리사이즈 (비율 유지 없음)

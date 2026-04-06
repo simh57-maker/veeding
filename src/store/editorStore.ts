@@ -1,12 +1,10 @@
 import { create } from 'zustand'
 
-export type Quality = 'high' | 'medium' | 'low' | 'preview'
+export type Quality = 'basic' | 'preview'
 
 export const QUALITY_MAP: Record<Quality, { crf: number; preset: string; label: string }> = {
-  high:    { crf: 18, preset: 'slow',   label: 'High (CRF 18)' },
-  medium:  { crf: 23, preset: 'fast',   label: 'Medium (CRF 23)' },
-  low:     { crf: 28, preset: 'faster', label: 'Low (CRF 28)' },
-  preview: { crf: 35, preset: 'ultrafast', label: 'Preview (CRF 35)' },
+  basic:   { crf: 25, preset: 'fast',      label: 'Basic (CRF 25)' },
+  preview: { crf: 40, preset: 'ultrafast', label: 'Preview (CRF 40)' },
 }
 
 export interface AlphaBounds {
@@ -120,7 +118,7 @@ export interface EditorState {
 }
 
 export const useEditorStore = create<EditorState>((set, get) => ({
-  quality: 'medium',
+  quality: 'basic',
   projectDuration: 10,
   currentTime: 0,
   isPlaying: false,
