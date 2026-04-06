@@ -221,7 +221,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     if (bannerAsset.alphaBounds) {
       const { x, y, width, height } = bannerAsset.alphaBounds
 
-      const scale = height / videoAsset.height
+      const scale = (height / videoAsset.height) * 1.01
       const centerX = x + width / 2
       const centerY = y + height / 2
 
