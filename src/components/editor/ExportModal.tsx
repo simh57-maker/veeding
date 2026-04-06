@@ -14,21 +14,29 @@ interface ExportJob {
   setId: string
   label: string
   status: ExportStatus
-  progress: number
+  progress: number        // 0~100
+  remainSec: number | null  // 남은 초 (렌더 중 실시간)
+  totalSec: number | null   // 이 세트 실제 소요 (완료 후)
+  estSec: number            // 사전 추정 (idle 상태에서 표시)
   error?: string
 }
 
-// 예상 시간 계산 — 실측 기반 계수
-// 실측: 1200×1200 / 13.3s → 52s, 1200×1200 / 32.5s → 132s (Basic CRF25)
-// 역산: 52 / (1.44MP × 13.3s) ≈ 2.71,  132 / (1.44MP × 32.5s) ≈ 2.82  → 평균 ≈ 2.75
-// Preview(CRF40)는 preset=ultrafast 로 약 40% 빠름 → 계수 ≈ 1.65
+// 사전 추정 계수 (fallback용 — 실측 후 대체됨)
 function estimateSeconds(widthPx: number, heightPx: number, durationSec: number, crf: number): number {
   const megapixels = (widthPx * heightPx) / 1_000_000
   const crfFactor = crf <= 28 ? 2.75 : 1.65
-  return Math.round(megapixels * durationSec * crfFactor)
+  return Math.max(1, Math.round(megapixels * durationSec * crfFactor))
 }
 
-function fmtSec(s: number): string {
+function fmtRemain(s: number): string {
+  if (s < 5)  return '거의 완료'
+  if (s < 60) return `${Math.ceil(s)}초 남음`
+  const m = Math.floor(s / 60)
+  const sec = Math.ceil(s % 60)
+  return sec > 0 ? `${m}분 ${sec}초 남음` : `${m}분 남음`
+}
+
+function fmtEst(s: number): string {
   if (s < 60) return `약 ${s}초`
   return `약 ${Math.ceil(s / 60)}분`
 }
@@ -40,15 +48,15 @@ export default function ExportModal({ onClose }: Props) {
   const resW = activeBannerAsset?.width  ?? 1920
   const resH = activeBannerAsset?.height ?? 1080
 
-  // 모든 세트가 기본 선택
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set(sets.map((s) => s.id)))
   const [jobs, setJobs] = useState<ExportJob[]>([])
   const [isRunning, setIsRunning] = useState(false)
   const downloadLinkRef = useRef<HTMLAnchorElement>(null)
+  // 실측 계수: MP당 초당 렌더 시간 (첫 세트 완료 후 갱신)
+  const measuredFactorRef = useRef<number | null>(null)
 
   const qualityCfg = QUALITY_MAP[quality]
 
-  // 세트 목록이 바뀌면 선택 동기화
   useEffect(() => {
     setSelectedIds(new Set(sets.map((s) => s.id)))
   }, [sets])
@@ -65,13 +73,16 @@ export default function ExportModal({ onClose }: Props) {
   function selectAll()   { setSelectedIds(new Set(sets.map((s) => s.id))) }
   function deselectAll() { setSelectedIds(new Set()) }
 
-  // 선택된 세트들의 예상 총 시간
+  function getSetDimensions(s: CompositionSet) {
+    const bAsset = bannerAssets.find((b) => b.id === s.banner.assetId)
+    return { w: bAsset?.width ?? resW, h: bAsset?.height ?? resH }
+  }
+
+  // 선택된 세트 사전 예상 합계
   const totalEstSec = Array.from(selectedIds).reduce((acc, id) => {
     const s = sets.find((x) => x.id === id)
     if (!s) return acc
-    const bAsset = bannerAssets.find((b) => b.id === s.banner.assetId)
-    const w = bAsset?.width  ?? resW
-    const h = bAsset?.height ?? resH
+    const { w, h } = getSetDimensions(s)
     return acc + estimateSeconds(w, h, s.projectDuration, qualityCfg.crf)
   }, 0)
 
@@ -147,13 +158,24 @@ export default function ExportModal({ onClose }: Props) {
   async function handleExport() {
     if (selectedIds.size === 0) return
     setIsRunning(true)
+    measuredFactorRef.current = null
 
-    const jobList: ExportJob[] = Array.from(selectedIds).map((id) => ({
-      setId: id,
-      label: sets.find((s) => s.id === id)?.name ?? id,
-      status: 'idle',
-      progress: 0,
-    }))
+    const selectedSets = Array.from(selectedIds)
+      .map((id) => sets.find((s) => s.id === id))
+      .filter(Boolean) as CompositionSet[]
+
+    const jobList: ExportJob[] = selectedSets.map((s) => {
+      const { w, h } = getSetDimensions(s)
+      return {
+        setId: s.id,
+        label: s.name,
+        status: 'idle',
+        progress: 0,
+        remainSec: null,
+        totalSec: null,
+        estSec: estimateSeconds(w, h, s.projectDuration, qualityCfg.crf),
+      }
+    })
     setJobs(jobList)
 
     try {
@@ -168,36 +190,62 @@ export default function ExportModal({ onClose }: Props) {
       })
 
       for (let i = 0; i < jobList.length; i++) {
-        updateJob(i, { status: 'processing' })
+        const job = jobList[i]
+        const found = selectedSets[i]
+        const { w, h } = getSetDimensions(found)
+
+        // 실측 계수가 있으면 idle 세트의 예상 시간 업데이트
+        if (measuredFactorRef.current !== null) {
+          const newEst = Math.max(1, Math.round(
+            (w * h / 1_000_000) * found.projectDuration * measuredFactorRef.current
+          ))
+          jobList[i] = { ...jobList[i], estSec: newEst }
+          setJobs([...jobList])
+        }
+
+        updateJob(i, jobList, { status: 'processing', remainSec: jobList[i].estSec })
+        const startTs = performance.now()
 
         try {
-          const found = sets.find((s) => s.id === jobList[i].setId) as CompositionSet
-          const banner = found.banner
-          const video  = found.video
-          const duration = found.projectDuration
-
-          if (!video) throw new Error('영상이 없습니다')
-
-          const setBannerAsset = bannerAssets.find((b) => b.id === banner?.assetId)
-          const fileW = setBannerAsset?.width  ?? resW
-          const fileH = setBannerAsset?.height ?? resH
+          if (!found.video) throw new Error('영상이 없습니다')
 
           const filename = `out_${i}.mp4`
+
           const blob = await renderOne(
-            ffmpeg, fetchFile, banner, video, duration, filename,
-            (p) => updateJob(i, { progress: p }),
+            ffmpeg, fetchFile, found.banner, found.video, found.projectDuration, filename,
+            (p) => {
+              if (p <= 0) return
+              const elapsed = (performance.now() - startTs) / 1000
+              const total = elapsed / (p / 100)
+              const remain = Math.max(0, total - elapsed)
+              updateJob(i, jobList, { progress: p, remainSec: remain })
+            },
           )
+
+          const elapsed = (performance.now() - startTs) / 1000
+
+          // 실측 계수 갱신 (MP당 초당)
+          const mp = (w * h) / 1_000_000
+          const newFactor = elapsed / (mp * found.projectDuration)
+          // 누적 평균으로 부드럽게 갱신
+          measuredFactorRef.current = measuredFactorRef.current === null
+            ? newFactor
+            : (measuredFactorRef.current + newFactor) / 2
+
+          const setBannerAsset = bannerAssets.find((b) => b.id === found.banner?.assetId)
+          const fileW = setBannerAsset?.width  ?? resW
+          const fileH = setBannerAsset?.height ?? resH
 
           const url = URL.createObjectURL(blob)
           const a = downloadLinkRef.current!
           a.href = url
-          a.download = `veeding_${jobList[i].label.replace(/[^a-zA-Z0-9가-힣]/g, '_')}_${fileW}x${fileH}_${Date.now()}.mp4`
+          a.download = `veeding_${job.label.replace(/[^a-zA-Z0-9가-힣]/g, '_')}_${fileW}x${fileH}_${Date.now()}.mp4`
           a.click()
           URL.revokeObjectURL(url)
 
-          updateJob(i, { status: 'done', progress: 100 })
+          updateJob(i, jobList, { status: 'done', progress: 100, remainSec: null, totalSec: Math.round(elapsed) })
         } catch (err) {
-          updateJob(i, { status: 'error', error: err instanceof Error ? err.message : 'Error' })
+          updateJob(i, jobList, { status: 'error', error: err instanceof Error ? err.message : 'Error' })
         }
       }
 
@@ -209,8 +257,9 @@ export default function ExportModal({ onClose }: Props) {
     setIsRunning(false)
   }
 
-  function updateJob(idx: number, patch: Partial<ExportJob>) {
-    setJobs((prev) => prev.map((j, i) => i === idx ? { ...j, ...patch } : j))
+  function updateJob(idx: number, list: ExportJob[], patch: Partial<ExportJob>) {
+    list[idx] = { ...list[idx], ...patch }
+    setJobs([...list])
   }
 
   const hasSelection = selectedIds.size > 0
@@ -255,16 +304,14 @@ export default function ExportModal({ onClose }: Props) {
           ) : (
             <div className="space-y-1 max-h-44 overflow-y-auto">
               {sets.map((s) => {
-                const bAsset = bannerAssets.find((b) => b.id === s.banner.assetId)
-                const w = bAsset?.width  ?? resW
-                const h = bAsset?.height ?? resH
+                const { w, h } = getSetDimensions(s)
                 const est = estimateSeconds(w, h, s.projectDuration, qualityCfg.crf)
                 return (
                   <SelectRow
                     key={s.id}
                     id={s.id}
                     label={s.name}
-                    sub={`${s.projectDuration.toFixed(1)}s · ${w}×${h} · ${fmtSec(est)}`}
+                    sub={`${s.projectDuration.toFixed(1)}s · ${w}×${h} · ${fmtEst(est)}`}
                     checked={selectedIds.has(s.id)}
                     onChange={() => toggleId(s.id)}
                   />
@@ -274,32 +321,60 @@ export default function ExportModal({ onClose }: Props) {
           )}
         </div>
 
-        {/* 총 예상 시간 */}
+        {/* 총 예상 시간 (렌더 전) */}
         {selectedIds.size > 0 && jobs.length === 0 && (
           <div className="mb-4 bg-[#1E1E1E] rounded-lg px-3 py-2 flex items-center justify-between">
             <span className="text-[11px] text-[#666]">총 예상 렌더 시간</span>
-            <span className="text-[11px] text-[#E0E0E0] font-medium">{fmtSec(totalEstSec)}</span>
+            <span className="text-[11px] text-[#E0E0E0] font-medium">{fmtEst(totalEstSec)}</span>
           </div>
         )}
 
         {/* 진행 상황 */}
         {jobs.length > 0 && (
-          <div className="mb-4 space-y-2 max-h-36 overflow-y-auto">
+          <div className="mb-4 space-y-2 max-h-48 overflow-y-auto">
             {jobs.map((job, i) => (
               <div key={i} className="bg-[#1E1E1E] rounded-lg p-2.5">
                 <div className="flex items-center justify-between mb-1">
-                  <span className="text-xs text-[#E0E0E0] truncate flex-1">{job.label}</span>
-                  {job.status === 'done'       && <CheckCircle className="w-3.5 h-3.5 text-[#4dbb88] shrink-0" />}
-                  {job.status === 'processing' && <Loader2 className="w-3.5 h-3.5 text-[#0D99FF] animate-spin shrink-0" />}
-                  {job.status === 'error'      && <span className="text-[10px] text-red-400 shrink-0">오류</span>}
+                  <span className="text-xs text-[#E0E0E0] truncate flex-1 mr-2">{job.label}</span>
+                  <div className="shrink-0 flex items-center gap-1.5">
+                    {job.status === 'done' && (
+                      <>
+                        <span className="text-[10px] text-[#4dbb88]">{job.totalSec}초 소요</span>
+                        <CheckCircle className="w-3.5 h-3.5 text-[#4dbb88]" />
+                      </>
+                    )}
+                    {job.status === 'processing' && (
+                      <>
+                        {job.remainSec !== null && (
+                          <span className="text-[10px] text-[#0D99FF] font-mono">
+                            {fmtRemain(job.remainSec)}
+                          </span>
+                        )}
+                        <Loader2 className="w-3.5 h-3.5 text-[#0D99FF] animate-spin" />
+                      </>
+                    )}
+                    {job.status === 'idle' && (
+                      <span className="text-[10px] text-[#555]">{fmtEst(job.estSec)}</span>
+                    )}
+                    {job.status === 'error' && (
+                      <span className="text-[10px] text-red-400">오류</span>
+                    )}
+                  </div>
                 </div>
+
                 {job.status === 'processing' && (
                   <div className="h-1 bg-[#333] rounded-full overflow-hidden">
-                    <div className="h-full bg-[#0D99FF] transition-all" style={{ width: `${job.progress}%` }} />
+                    <div
+                      className="h-full bg-[#0D99FF] transition-all duration-300"
+                      style={{ width: `${job.progress}%` }}
+                    />
                   </div>
                 )}
+                {job.status === 'idle' && (
+                  <div className="h-1 bg-[#2a2a2a] rounded-full" />
+                )}
                 {job.status === 'error' && (
-                  <div className="text-[10px] text-red-400">{job.error}</div>
+                  <div className="text-[10px] text-red-400 mt-0.5">{job.error}</div>
                 )}
               </div>
             ))}
