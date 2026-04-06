@@ -167,10 +167,36 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   setSelectedLayer: (l) => set({ selectedLayer: l }),
 
   updateVideoClip: (partial) =>
-    set((s) => s.activeVideo ? { activeVideo: { ...s.activeVideo, ...partial } } : {}),
+    set((s) => {
+      if (!s.activeVideo) return {}
+      const updated = { ...s.activeVideo, ...partial }
+      // speed / inPoint / outPoint 변경 시 projectDuration 자동 재계산
+      const durationChanged = partial.speed !== undefined || partial.inPoint !== undefined || partial.outPoint !== undefined
+      const newDuration = durationChanged
+        ? (updated.outPoint - updated.inPoint) / updated.speed
+        : s.projectDuration
+      // activeSetId가 있으면 해당 세트도 즉시 갱신
+      const updatedSets = s.activeSetId
+        ? s.sets.map((entry) => entry.id === s.activeSetId
+            ? { ...entry, video: updated, projectDuration: durationChanged ? newDuration : entry.projectDuration }
+            : entry)
+        : s.sets
+      return {
+        activeVideo: updated,
+        ...(durationChanged ? { projectDuration: newDuration } : {}),
+        sets: updatedSets,
+      }
+    }),
 
   updateBannerClip: (partial) =>
-    set((s) => s.activeBanner ? { activeBanner: { ...s.activeBanner, ...partial } } : {}),
+    set((s) => {
+      if (!s.activeBanner) return {}
+      const updated = { ...s.activeBanner, ...partial }
+      const updatedSets = s.activeSetId
+        ? s.sets.map((entry) => entry.id === s.activeSetId ? { ...entry, banner: updated } : entry)
+        : s.sets
+      return { activeBanner: updated, sets: updatedSets }
+    }),
 
   pushHistory: () => {
     const { activeVideo, activeBanner, _history, _historyIndex } = get()
