@@ -18,11 +18,13 @@ interface ExportJob {
   error?: string
 }
 
-// 예상 시간 계산: 픽셀 수 × 길이 × crf 계수 (경험적 공식)
+// 예상 시간 계산 — 실측 기반 계수
+// 실측: 1200×1200 / 13.3s → 52s, 1200×1200 / 32.5s → 132s (Basic CRF25)
+// 역산: 52 / (1.44MP × 13.3s) ≈ 2.71,  132 / (1.44MP × 32.5s) ≈ 2.82  → 평균 ≈ 2.75
+// Preview(CRF40)는 preset=ultrafast 로 약 40% 빠름 → 계수 ≈ 1.65
 function estimateSeconds(widthPx: number, heightPx: number, durationSec: number, crf: number): number {
   const megapixels = (widthPx * heightPx) / 1_000_000
-  // Basic(crf25) ≈ 0.8s/MP/s, Preview(crf40) ≈ 0.3s/MP/s (브라우저 wasm 기준 추정)
-  const crfFactor = crf <= 28 ? 0.8 : 0.3
+  const crfFactor = crf <= 28 ? 2.75 : 1.65
   return Math.round(megapixels * durationSec * crfFactor)
 }
 
