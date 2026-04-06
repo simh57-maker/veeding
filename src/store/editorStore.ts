@@ -212,35 +212,27 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     if (!activeBanner || !activeVideo) return
 
     const bannerAsset = bannerAssets.find((b) => b.id === activeBanner.assetId)
-    const videoAsset = videoAssets.find((v) => v.id === activeVideo.assetId)
+    const videoAsset  = videoAssets.find((v)  => v.id  === activeVideo.assetId)
     if (!videoAsset || !bannerAsset) return
 
     const inPoint = activeVideo.inPoint
     const outPoint = Math.min(activeVideo.outPoint, videoAsset.duration)
     const clipDuration = (outPoint - inPoint) / activeVideo.speed
 
+    // alphaBounds 계산
+    let newVideo = { ...activeVideo }
+    if (bannerAsset.alphaBounds) {
+      const { x, y, width, height } = bannerAsset.alphaBounds
+      const scale = (height / videoAsset.height) * 1.01
+      newVideo = { ...newVideo, x: x + width / 2, y: y + height / 2, scaleX: scale, scaleY: scale }
+    }
+
+    // set을 한 번에 — 두 번 호출하면 중간 상태를 읽어 꼬임
     set({
       projectDuration: clipDuration,
       activeBanner: { ...activeBanner, inPoint: 0, outPoint: clipDuration },
+      activeVideo: newVideo,
     })
-
-    if (bannerAsset.alphaBounds) {
-      const { x, y, width, height } = bannerAsset.alphaBounds
-
-      const scale = (height / videoAsset.height) * 1.01
-      const centerX = x + width / 2
-      const centerY = y + height / 2
-
-      set({
-        activeVideo: {
-          ...get().activeVideo!,
-          x: centerX,
-          y: centerY,
-          scaleX: scale,
-          scaleY: scale,
-        },
-      })
-    }
   },
 
   saveSet: () => {
