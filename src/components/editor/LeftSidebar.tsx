@@ -1,13 +1,18 @@
 'use client'
 
 import { useRef, useState, useCallback } from 'react'
-import { ImageIcon, Film, Layers, Plus, Trash2, Check } from 'lucide-react'
+import { ImageIcon, Film, Layers, Plus, Trash2, Check, Video } from 'lucide-react'
+import NextImage from 'next/image'
 import { useEditorStore } from '@/store/editorStore'
 import { detectAlphaBounds } from '@/lib/alphaDetect'
 
 type Tab = 'assets' | 'sets'
 
-export default function LeftSidebar() {
+interface Props {
+  user: { id: string; email: string; name: string; image: string }
+}
+
+export default function LeftSidebar({ user }: Props) {
   const [tab, setTab] = useState<Tab>('assets')
   const [bannerDragging, setBannerDragging] = useState(false)
   const [videoDragging, setVideoDragging] = useState(false)
@@ -72,6 +77,23 @@ export default function LeftSidebar() {
   // w-60의 2배 = w-[480px]
   return (
     <aside className="w-[480px] bg-[#2C2C2C] border-r border-[#333] flex flex-col shrink-0">
+
+      {/* 로고 + 계정 정보 */}
+      <div className="px-4 py-3 border-b border-[#333] flex items-center justify-between shrink-0">
+        <div className="flex items-center gap-2">
+          <div className="bg-[#0D99FF] rounded-lg p-1">
+            <Video className="w-4 h-4 text-white" />
+          </div>
+          <span className="text-white font-bold text-sm tracking-wide">Veeding</span>
+        </div>
+        <div className="flex items-center gap-2">
+          {user.image && (
+            <NextImage src={user.image} alt={user.name} width={22} height={22} className="rounded-full" />
+          )}
+          <span className="text-[#555] text-[11px] truncate max-w-[120px]">{user.email}</span>
+        </div>
+      </div>
+
       {/* 탭 */}
       <div className="flex border-b border-[#333] shrink-0">
         <TabBtn active={tab === 'assets'} onClick={() => setTab('assets')}>
