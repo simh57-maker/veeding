@@ -123,8 +123,6 @@ export default function ExportModal({ onClose }: Props) {
 
     // 속도 필터
     const vSpeedFilter = speed !== 1 ? `setpts=${(1 / speed).toFixed(6)}*PTS,` : ''
-    // atempo는 0.5~2.0 범위만 지원
-    const aSpeedFilter = speed !== 1 ? `atempo=${speed.toFixed(4)},` : ''
 
     // ── 입력 구성 ─────────────────────────────────────────
     // index 0: 영상 (input seeking으로 클립)
@@ -183,25 +181,20 @@ export default function ExportModal({ onClose }: Props) {
     // ── 오디오 필터 체인 ──────────────────────────────────
     // 영상 오디오가 없을 수 있으므로 anullsrc와 amix해서 항상 유효한 스트림 확보
     // amix duration=shortest → 짧은 쪽 기준 (silence는 clipLen으로 고정됨)
-    const videoVol = musicTrack?.videoVolume ?? 1
-    const musicVol = musicTrack?.volume      ?? 0
+    const musicVol = musicTrack?.volume ?? 0
 
     const maps: string[] = ['-map', '[vout]']
     let af: string
 
+    // [0:a]는 영상에 오디오 스트림이 없으면 filter_complex 전체를 실패시킴
+    // → anullsrc 입력을 항상 기본 오디오로 사용
     if (musicIdx >= 0) {
-      // 영상 오디오 + silence fallback → 속도/볼륨 처리 → BGM과 믹싱
       af =
-        `[0:a]${aSpeedFilter}volume=${videoVol.toFixed(3)}[va_raw];` +
-        `[${silenceIdx}:a][va_raw]amix=inputs=2:duration=first[va];` +
-        `[${musicIdx}:a]volume=${musicVol.toFixed(3)}[ma];` +
-        `[va][ma]amix=inputs=2:duration=first[aout]`
+        `[${musicIdx}:a]volume=${musicVol.toFixed(3)}[aout]`
       maps.push('-map', '[aout]')
     } else {
-      // BGM 없음 — 영상 오디오만 (silence fallback 포함)
-      af =
-        `[0:a]${aSpeedFilter}volume=${videoVol.toFixed(3)}[va_raw];` +
-        `[${silenceIdx}:a][va_raw]amix=inputs=2:duration=first[aout]`
+      // BGM 없음 — anullsrc 무음
+      af = `[${silenceIdx}:a]anull[aout]`
       maps.push('-map', '[aout]')
     }
 
