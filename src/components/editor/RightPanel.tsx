@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { useEditorStore, QUALITY_MAP, Quality, MusicAsset } from '@/store/editorStore'
-import { Settings2, Film, Download, Monitor, Music } from 'lucide-react'
+import { Download, Monitor, Music, Gauge, Zap, Volume2 } from 'lucide-react'
 import ExportModal from './ExportModal'
 
 const SPEED_OPTIONS = [1.0, 1.2, 1.3, 1.5]
@@ -12,7 +12,6 @@ const BUILT_IN_MUSIC = [
   { name: 'Jumpy Pants - Freedom Trail Studio',  path: '/asset/music/Jumpy Pants - Freedom Trail Studio.mp3' },
 ]
 
-/** Web Audio API로 영상 URL의 평균 RMS 볼륨(0~1)을 측정 */
 async function measureVideoRMS(videoUrl: string): Promise<number> {
   try {
     const res = await fetch(videoUrl)
@@ -21,17 +20,12 @@ async function measureVideoRMS(videoUrl: string): Promise<number> {
     const decoded = await audioCtx.decodeAudioData(arrayBuffer)
     const data = decoded.getChannelData(0)
     let sum = 0
-    const step = Math.max(1, Math.floor(data.length / 4000)) // 샘플 4000개
+    const step = Math.max(1, Math.floor(data.length / 4000))
     let count = 0
-    for (let i = 0; i < data.length; i += step) {
-      sum += data[i] * data[i]
-      count++
-    }
+    for (let i = 0; i < data.length; i += step) { sum += data[i] * data[i]; count++ }
     audioCtx.close()
     return Math.sqrt(sum / count)
-  } catch {
-    return 0.5 // 분석 실패 시 기본값
-  }
+  } catch { return 0.5 }
 }
 
 export default function RightPanel() {
@@ -42,7 +36,6 @@ export default function RightPanel() {
   const [showExport, setShowExport] = useState(false)
   const prevSetId = useRef<string | null>(null)
 
-  // 내장 음악을 최초 한 번만 musicAssets에 등록
   useEffect(() => {
     if (musicAssets.length > 0) return
     BUILT_IN_MUSIC.forEach(({ name, path }) => {
@@ -55,17 +48,13 @@ export default function RightPanel() {
     })
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // 세트 클릭 시 BGM 자동 볼륨 설정 (이전 선택된 BGM 유지, 볼륨만 재계산)
   useEffect(() => {
     if (!activeSetId || activeSetId === prevSetId.current) return
     prevSetId.current = activeSetId
-    if (!musicTrack) return  // BGM이 선택된 상태일 때만
-
+    if (!musicTrack) return
     const videoAsset = activeVideo ? videoAssets.find((v) => v.id === activeVideo.assetId) : null
     if (!videoAsset) return
-
     measureVideoRMS(videoAsset.url).then((rms) => {
-      // 영상 RMS의 20%를 BGM 볼륨으로 설정 (최소 0.05, 최대 1)
       const bgmVol = Math.min(1, Math.max(0.05, rms * 0.2))
       setMusicTrack({ ...musicTrack, volume: parseFloat(bgmVol.toFixed(2)) })
     })
@@ -75,13 +64,8 @@ export default function RightPanel() {
   const sizeLabel = bannerAsset ? `${bannerAsset.width} × ${bannerAsset.height}` : null
 
   function selectMusic(asset: MusicAsset) {
-    // BGM 선택은 세트가 로드된 상태에서만 허용
     if (!activeSetId) return
-    if (musicTrack?.assetId === asset.id) {
-      setMusicTrack(null)
-      return
-    }
-    // 선택 즉시 영상 볼륨 측정 후 20% 적용
+    if (musicTrack?.assetId === asset.id) { setMusicTrack(null); return }
     const videoAsset = activeVideo ? videoAssets.find((v) => v.id === activeVideo.assetId) : null
     if (videoAsset) {
       measureVideoRMS(videoAsset.url).then((rms) => {
@@ -95,59 +79,59 @@ export default function RightPanel() {
 
   return (
     <>
-      <aside className="w-[240px] h-full bg-[#2C2C2C]/90 backdrop-blur-md border border-[#3a3a3a] rounded-2xl flex flex-col shrink-0 overflow-y-auto shadow-2xl">
-        <div className="px-4 py-3 border-b border-[#333] flex items-center gap-2">
-          <Settings2 className="w-4 h-4 text-[#888]" />
-          <span className="text-xs font-semibold text-[#E0E0E0] uppercase tracking-wider">Properties</span>
+      <aside className="w-[256px] h-full bg-[#16191D]/95 backdrop-blur-xl border border-white/[0.06] rounded-2xl flex flex-col shrink-0 overflow-hidden shadow-2xl">
+
+        {/* 헤더 */}
+        <div className="px-5 pt-5 pb-4 shrink-0">
+          <span className="text-[13px] font-semibold text-white/90 tracking-tight">Properties</span>
         </div>
 
-        <div className="p-4 space-y-5 flex-1">
+        <div className="flex-1 overflow-y-auto px-4 pb-4 space-y-6 scrollbar-none">
 
           {/* Canvas Size */}
           <Section title="Canvas Size" icon={<Monitor className="w-3.5 h-3.5" />}>
-            {sizeLabel ? (
-              <div className="flex items-center justify-between px-3 py-2 rounded-lg bg-[#1E1E1E] border border-[#3a3a3a]">
-                <span className="text-[10px] text-[#555]">Canvas</span>
-                <span className="text-xs text-[#E0E0E0] font-medium">{sizeLabel}</span>
-              </div>
-            ) : (
-              <p className="text-[10px] text-[#444] px-1">배너를 업로드하면 설정됩니다</p>
-            )}
+            <div className="rounded-xl bg-[#1E2128] px-4 py-3">
+              {sizeLabel ? (
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] text-white/30">Size</span>
+                  <span className="text-[12px] text-white/80 font-medium">{sizeLabel}</span>
+                </div>
+              ) : (
+                <span className="text-[11px] text-white/25">배너를 업로드하면 설정됩니다</span>
+              )}
+            </div>
           </Section>
 
           {/* Export Quality */}
-          <Section title="Export Quality" icon={<Settings2 className="w-3.5 h-3.5" />}>
-            <div className="space-y-1">
+          <Section title="Quality" icon={<Zap className="w-3.5 h-3.5" />}>
+            <div className="rounded-xl bg-[#1E2128] p-1 flex gap-1">
               {(Object.keys(QUALITY_MAP) as Quality[]).map((q) => (
                 <button
                   key={q}
                   onClick={() => setQuality(q)}
-                  className={`w-full flex items-center justify-between px-3 py-2 rounded-lg border text-xs transition-all ${
+                  className={`flex-1 py-2 rounded-lg text-[11px] font-medium transition-all ${
                     quality === q
-                      ? 'border-[#0D99FF] bg-[#0D99FF]/10 text-[#0D99FF]'
-                      : 'border-[#3a3a3a] text-[#888] hover:border-[#555] hover:text-[#E0E0E0]'
+                      ? 'bg-[#3B82F6] text-white shadow-sm'
+                      : 'text-white/40 hover:text-white/70'
                   }`}
                 >
-                  <span className="capitalize">{q}</span>
-                  <span className="text-[10px] opacity-70">
-                    {QUALITY_MAP[q].label.split('(')[1]?.replace(')', '') ?? ''}
-                  </span>
+                  {q.charAt(0).toUpperCase() + q.slice(1)}
                 </button>
               ))}
             </div>
           </Section>
 
-          {/* Speed — 항상 표시, 영상 없으면 비활성화 */}
-          <Section title="Speed" icon={<Film className="w-3.5 h-3.5" />}>
-            <div className={`grid grid-cols-2 gap-1 ${!activeVideo ? 'opacity-30 pointer-events-none' : ''}`}>
+          {/* Speed */}
+          <Section title="Speed" icon={<Gauge className="w-3.5 h-3.5" />}>
+            <div className={`rounded-xl bg-[#1E2128] p-1 grid grid-cols-4 gap-1 ${!activeVideo ? 'opacity-25 pointer-events-none' : ''}`}>
               {SPEED_OPTIONS.map((s) => (
                 <button
                   key={s}
                   onClick={() => updateVideoClip({ speed: s })}
-                  className={`py-1.5 rounded-lg text-xs border font-medium transition-all ${
+                  className={`py-2 rounded-lg text-[11px] font-medium transition-all ${
                     activeVideo?.speed === s
-                      ? 'bg-[#8B5CF6] border-[#8B5CF6] text-white'
-                      : 'border-[#444] text-[#888] hover:border-[#666] hover:text-[#E0E0E0]'
+                      ? 'bg-[#3B82F6] text-white shadow-sm'
+                      : 'text-white/40 hover:text-white/70'
                   }`}
                 >
                   {s}x
@@ -156,79 +140,65 @@ export default function RightPanel() {
             </div>
           </Section>
 
-          {/* Background Music */}
+          {/* BGM */}
           <Section title="BGM" icon={<Music className="w-3.5 h-3.5" />}>
-            <select
-              value={musicTrack?.assetId ?? ''}
-              onChange={(e) => {
-                const id = e.target.value
-                if (!id) { setMusicTrack(null); return }
-                const asset = musicAssets.find((m) => m.id === id)
-                if (asset) selectMusic(asset)
-              }}
-              disabled={!activeSetId}
-              className="w-full px-2.5 py-2 rounded-lg border border-[#3a3a3a] bg-[#1E1E1E] text-[11px] text-[#E0E0E0] cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed focus:outline-none focus:border-[#F59E0B] transition-colors"
-            >
-              <option value="">-- BGM 없음 --</option>
-              {musicAssets.map((asset) => (
-                <option key={asset.id} value={asset.id}>
-                  {asset.name}
-                </option>
-              ))}
-            </select>
+            <div className={`space-y-3 ${!activeSetId ? 'opacity-25 pointer-events-none' : ''}`}>
+              <select
+                value={musicTrack?.assetId ?? ''}
+                onChange={(e) => {
+                  const id = e.target.value
+                  if (!id) { setMusicTrack(null); return }
+                  const asset = musicAssets.find((m) => m.id === id)
+                  if (asset) selectMusic(asset)
+                }}
+                disabled={!activeSetId}
+                className="w-full px-3 py-2.5 rounded-xl bg-[#1E2128] text-[11px] text-white/70 border-none outline-none cursor-pointer appearance-none"
+                style={{ backgroundImage: 'none' }}
+              >
+                <option value="" style={{ background: '#1E2128' }}>— BGM 없음 —</option>
+                {musicAssets.map((asset) => (
+                  <option key={asset.id} value={asset.id} style={{ background: '#1E2128' }}>
+                    {asset.name}
+                  </option>
+                ))}
+              </select>
 
-            {/* BGM 볼륨 슬라이더 */}
-            {musicTrack && (
-              <div className="mt-3">
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-[10px] text-[#555]">BGM Volume</span>
-                  <span className="text-[10px] text-[#F59E0B] font-mono">{Math.round(musicTrack.volume * 100)}%</span>
-                </div>
-                <input
-                  type="range" min={0} max={1} step={0.01}
+              {musicTrack && (
+                <VolumeSlider
+                  label="BGM"
                   value={musicTrack.volume}
-                  onChange={(e) => updateMusicTrack({ volume: parseFloat(e.target.value) })}
-                  className="w-full accent-[#F59E0B] h-1 cursor-pointer"
+                  color="#F59E0B"
+                  onChange={(v) => updateMusicTrack({ volume: v })}
                 />
-              </div>
-            )}
-
-            {/* 세트 미선택 안내 */}
+              )}
+            </div>
             {!activeSetId && (
-              <p className="text-[10px] text-[#444] px-1 mt-1">세트를 선택하면 BGM을 등록할 수 있습니다</p>
+              <p className="text-[10px] text-white/20 mt-2">세트를 선택하면 BGM을 등록할 수 있습니다</p>
             )}
           </Section>
 
           {/* Video Volume */}
-          <Section title="Video Volume" icon={<Music className="w-3.5 h-3.5" />}>
-            <div className={!activeSetId ? 'opacity-30 pointer-events-none' : ''}>
-              <div className="flex items-center justify-between mb-1">
-                <span className="text-[10px] text-[#555]">영상 음향</span>
-                <span className="text-[10px] text-[#4d88ff] font-mono">
-                  {Math.round((musicTrack?.videoVolume ?? 1) * 100)}%
-                </span>
-              </div>
-              <input
-                type="range" min={0} max={1} step={0.01}
+          <Section title="Video Volume" icon={<Volume2 className="w-3.5 h-3.5" />}>
+            <div className={!activeSetId || !musicTrack ? 'opacity-25 pointer-events-none' : ''}>
+              <VolumeSlider
+                label="영상 음향"
                 value={musicTrack?.videoVolume ?? 1}
-                onChange={(e) => updateMusicTrack({ videoVolume: parseFloat(e.target.value) })}
-                disabled={!musicTrack}
-                className="w-full accent-[#4d88ff] h-1 cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
+                color="#3B82F6"
+                onChange={(v) => updateMusicTrack({ videoVolume: v })}
               />
-              {!musicTrack && activeSetId && (
-                <p className="text-[10px] text-[#444] px-1 mt-1">BGM을 선택하면 조절할 수 있습니다</p>
-              )}
             </div>
+            {activeSetId && !musicTrack && (
+              <p className="text-[10px] text-white/20 mt-2">BGM을 선택하면 조절할 수 있습니다</p>
+            )}
           </Section>
 
         </div>
 
-        {/* Export 버튼 — 하단 고정 */}
-        <div className="p-3 border-t border-[#333] shrink-0">
+        {/* Export 버튼 */}
+        <div className="px-4 pb-4 shrink-0">
           <button
             onClick={() => setShowExport(true)}
-            className="w-full flex items-center justify-center gap-2 bg-[#0D99FF] hover:bg-[#0b87e0] text-white text-sm font-medium rounded-lg transition-colors"
-            style={{ height: 44 }}
+            className="w-full flex items-center justify-center gap-2 bg-[#3B82F6] hover:bg-[#2563EB] text-white text-[13px] font-semibold rounded-xl transition-colors h-11"
           >
             <Download className="w-4 h-4" />
             Export
@@ -245,12 +215,32 @@ function Section({ title, icon, children }: {
   title: string; icon: React.ReactNode; children: React.ReactNode
 }) {
   return (
-    <div>
-      <div className="flex items-center gap-1.5 mb-3">
-        <span className="text-[#888]">{icon}</span>
-        <span className="text-[11px] font-semibold text-[#888] uppercase tracking-wider">{title}</span>
+    <div className="space-y-2.5">
+      <div className="flex items-center gap-2">
+        <span className="text-white/30">{icon}</span>
+        <span className="text-[11px] font-semibold text-white/40 uppercase tracking-widest">{title}</span>
       </div>
       {children}
+    </div>
+  )
+}
+
+function VolumeSlider({ label, value, color, onChange }: {
+  label: string; value: number; color: string; onChange: (v: number) => void
+}) {
+  return (
+    <div className="rounded-xl bg-[#1E2128] px-4 py-3 space-y-2">
+      <div className="flex items-center justify-between">
+        <span className="text-[11px] text-white/40">{label}</span>
+        <span className="text-[11px] font-mono" style={{ color }}>{Math.round(value * 100)}%</span>
+      </div>
+      <input
+        type="range" min={0} max={1} step={0.01}
+        value={value}
+        onChange={(e) => onChange(parseFloat(e.target.value))}
+        className="w-full h-1 cursor-pointer rounded-full appearance-none"
+        style={{ accentColor: color }}
+      />
     </div>
   )
 }
