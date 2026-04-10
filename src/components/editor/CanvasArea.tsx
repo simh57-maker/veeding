@@ -43,6 +43,7 @@ export default function CanvasArea() {
   const dragRef      = useRef<DragState | null>(null)
   const snapRef      = useRef<SnapState>({ snapX: false, snapY: false })
   const [cursor, setCursor] = useState<string>('default')
+  const [zoomFactor, setZoomFactor] = useState<number>(1) // 사용자 줌 배율 (1 = fit)
 
   const {
     activeBanner, activeVideo,
@@ -66,8 +67,9 @@ export default function CanvasArea() {
     if (!c) return 1
     const availW = c.clientWidth  - CANVAS_PADDING * 2
     const availH = c.clientHeight - CANVAS_PADDING * 2
-    return Math.min(availW / canvasW, availH / canvasH, 1)
-  }, [canvasW, canvasH])
+    const fit = Math.min(availW / canvasW, availH / canvasH, 1)
+    return fit * zoomFactor
+  }, [canvasW, canvasH, zoomFactor])
 
   const toCanvas = useCallback((ex: number, ey: number) => {
     const canvas = canvasRef.current
@@ -469,11 +471,28 @@ export default function CanvasArea() {
     dragRef.current = null
   }
 
+  function handleWheel(e: React.WheelEvent<HTMLDivElement>) {
+    e.preventDefault()
+    const delta = e.deltaY > 0 ? 0.9 : 1.1
+    setZoomFactor((prev) => Math.min(5, Math.max(0.1, prev * delta)))
+  }
+
+  // fit 배율 계산 (줌 퍼센트 표시용)
+  const fitScale = (() => {
+    const c = containerRef.current
+    if (!c) return 1
+    const availW = c.clientWidth  - CANVAS_PADDING * 2
+    const availH = c.clientHeight - CANVAS_PADDING * 2
+    return Math.min(availW / canvasW, availH / canvasH, 1)
+  })()
+  const zoomPct = Math.round(fitScale * zoomFactor * 100)
+
   return (
     <div
       ref={containerRef}
-      className="flex-1 flex items-center justify-center overflow-hidden relative"
+      className="absolute inset-0 flex items-center justify-center overflow-hidden"
       style={{ background: 'radial-gradient(circle at center, #252525 0%, #1A1A1A 100%)' }}
+      onWheel={handleWheel}
     >
       <div className="hidden">
         {bannerAssets.map((a) => (
@@ -509,6 +528,13 @@ export default function CanvasArea() {
           <p className="text-sm">배너를 업로드하고 세트를 등록하세요</p>
         </div>
       )}
+
+      {/* 줌 퍼센트 표시 */}
+      <div className="absolute bottom-3 left-1/2 -translate-x-1/2 pointer-events-none">
+        <div className="bg-[#1A1A1A]/80 backdrop-blur-sm border border-[#333] rounded-full px-3 py-1">
+          <span className="text-[11px] text-[#666] font-mono">{zoomPct}%</span>
+        </div>
+      </div>
     </div>
   )
 }

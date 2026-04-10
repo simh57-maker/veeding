@@ -95,7 +95,7 @@ export default function RightPanel() {
 
   return (
     <>
-      <aside className="w-[240px] bg-[#2C2C2C] border-l border-[#333] flex flex-col shrink-0 overflow-y-auto">
+      <aside className="w-[240px] h-full bg-[#2C2C2C]/90 backdrop-blur-md border border-[#3a3a3a] rounded-2xl flex flex-col shrink-0 overflow-y-auto shadow-2xl">
         <div className="px-4 py-3 border-b border-[#333] flex items-center gap-2">
           <Settings2 className="w-4 h-4 text-[#888]" />
           <span className="text-xs font-semibold text-[#E0E0E0] uppercase tracking-wider">Properties</span>

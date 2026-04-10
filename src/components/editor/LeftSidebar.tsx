@@ -77,7 +77,7 @@ export default function LeftSidebar({ user }: Props) {
   }
 
   return (
-    <aside className="w-[240px] bg-[#2C2C2C] border-r border-[#333] flex flex-col shrink-0">
+    <aside className="w-[240px] h-full bg-[#2C2C2C]/90 backdrop-blur-md border border-[#3a3a3a] rounded-2xl flex flex-col shrink-0 overflow-hidden shadow-2xl">
 
       {/* 로고 + 계정 정보 */}
       <div className="px-4 py-3 border-b border-[#333] flex items-center justify-between shrink-0">

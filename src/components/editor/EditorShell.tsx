@@ -10,14 +10,23 @@ interface Props {
 
 export default function EditorShell({ user }: Props) {
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-[#1E1E1E]">
-      <LeftSidebar user={user} />
+    <div className="relative h-screen w-screen overflow-hidden bg-[#1A1A1A]">
+      {/* 캔버스 — 전체 화면 */}
+      <CanvasArea />
 
-      <div className="flex flex-col flex-1 overflow-hidden min-w-0">
-        <CanvasArea />
+      {/* 왼쪽 플로팅 패널 */}
+      <div className="absolute top-3 left-3 bottom-3 z-10 pointer-events-none">
+        <div className="h-full pointer-events-auto">
+          <LeftSidebar user={user} />
+        </div>
       </div>
 
-      <RightPanel />
+      {/* 오른쪽 플로팅 패널 */}
+      <div className="absolute top-3 right-3 bottom-3 z-10 pointer-events-none">
+        <div className="h-full pointer-events-auto">
+          <RightPanel />
+        </div>
+      </div>
     </div>
   )
 }
