@@ -15,14 +15,14 @@ export default function EditorShell({ user }: Props) {
       <CanvasArea />
 
       {/* 왼쪽 플로팅 패널 */}
-      <div className="absolute top-3 left-3 bottom-3 z-10 pointer-events-none">
+      <div className="absolute top-5 left-5 bottom-5 z-10 pointer-events-none">
         <div className="h-full pointer-events-auto">
           <LeftSidebar user={user} />
         </div>
       </div>
 
       {/* 오른쪽 플로팅 패널 */}
-      <div className="absolute top-3 right-3 bottom-3 z-10 pointer-events-none">
+      <div className="absolute top-5 right-5 bottom-5 z-10 pointer-events-none">
         <div className="h-full pointer-events-auto">
           <RightPanel />
         </div>

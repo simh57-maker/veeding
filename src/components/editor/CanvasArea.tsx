@@ -473,7 +473,7 @@ export default function CanvasArea() {
 
   function handleWheel(e: React.WheelEvent<HTMLDivElement>) {
     e.preventDefault()
-    const delta = e.deltaY > 0 ? 0.9 : 1.1
+    const delta = e.deltaY > 0 ? 0.97 : 1.03
     setZoomFactor((prev) => Math.min(5, Math.max(0.1, prev * delta)))
   }
 
