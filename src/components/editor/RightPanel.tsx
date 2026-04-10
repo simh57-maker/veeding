@@ -1,23 +1,46 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useEditorStore, QUALITY_MAP, Quality, MusicAsset } from '@/store/editorStore'
-import { Settings2, Film, Download, Monitor, Music, Volume2, VolumeX } from 'lucide-react'
+import { Settings2, Film, Download, Monitor, Music } from 'lucide-react'
 import ExportModal from './ExportModal'
 
-const SPEED_OPTIONS = [0.5, 1.0, 1.5, 2.0]
+const SPEED_OPTIONS = [1.0, 0.8, 0.7, 0.6]
 
 const BUILT_IN_MUSIC = [
   { name: 'Jarabe de Tequila - Inaban & Nabani', path: '/asset/music/Jarabe de Tequila - Inaban _ Nabani.mp3' },
   { name: 'Jumpy Pants - Freedom Trail Studio',  path: '/asset/music/Jumpy Pants - Freedom Trail Studio.mp3' },
 ]
 
+/** Web Audio API로 영상 URL의 평균 RMS 볼륨(0~1)을 측정 */
+async function measureVideoRMS(videoUrl: string): Promise<number> {
+  try {
+    const res = await fetch(videoUrl)
+    const arrayBuffer = await res.arrayBuffer()
+    const audioCtx = new AudioContext()
+    const decoded = await audioCtx.decodeAudioData(arrayBuffer)
+    const data = decoded.getChannelData(0)
+    let sum = 0
+    const step = Math.max(1, Math.floor(data.length / 4000)) // 샘플 4000개
+    let count = 0
+    for (let i = 0; i < data.length; i += step) {
+      sum += data[i] * data[i]
+      count++
+    }
+    audioCtx.close()
+    return Math.sqrt(sum / count)
+  } catch {
+    return 0.5 // 분석 실패 시 기본값
+  }
+}
+
 export default function RightPanel() {
   const {
     activeVideo, updateVideoClip, quality, setQuality, activeBanner, bannerAssets,
-    musicAssets, musicTrack, addMusicAsset, setMusicTrack, updateMusicTrack,
+    musicAssets, musicTrack, addMusicAsset, setMusicTrack, videoAssets, activeSetId,
   } = useEditorStore()
   const [showExport, setShowExport] = useState(false)
+  const prevSetId = useRef<string | null>(null)
 
   // 내장 음악을 최초 한 번만 musicAssets에 등록
   useEffect(() => {
@@ -26,25 +49,47 @@ export default function RightPanel() {
       const audio = new Audio()
       audio.src = path
       audio.onloadedmetadata = () => {
-        const asset: MusicAsset = {
-          id: path,          // path를 id로 사용 (중복 방지)
-          name,
-          url: path,
-          duration: audio.duration,
-        }
+        const asset: MusicAsset = { id: path, name, url: path, duration: audio.duration }
         addMusicAsset(asset)
       }
     })
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // 세트 클릭 시 BGM 자동 볼륨 설정 (이전 선택된 BGM 유지, 볼륨만 재계산)
+  useEffect(() => {
+    if (!activeSetId || activeSetId === prevSetId.current) return
+    prevSetId.current = activeSetId
+    if (!musicTrack) return  // BGM이 선택된 상태일 때만
+
+    const videoAsset = activeVideo ? videoAssets.find((v) => v.id === activeVideo.assetId) : null
+    if (!videoAsset) return
+
+    measureVideoRMS(videoAsset.url).then((rms) => {
+      // 영상 RMS의 20%를 BGM 볼륨으로 설정 (최소 0.05, 최대 1)
+      const bgmVol = Math.min(1, Math.max(0.05, rms * 0.2))
+      setMusicTrack({ ...musicTrack, volume: parseFloat(bgmVol.toFixed(2)) })
+    })
+  }, [activeSetId]) // eslint-disable-line react-hooks/exhaustive-deps
+
   const bannerAsset = activeBanner ? bannerAssets.find((b) => b.id === activeBanner.assetId) : null
   const sizeLabel = bannerAsset ? `${bannerAsset.width} × ${bannerAsset.height}` : null
 
   function selectMusic(asset: MusicAsset) {
+    // BGM 선택은 세트가 로드된 상태에서만 허용
+    if (!activeSetId) return
     if (musicTrack?.assetId === asset.id) {
       setMusicTrack(null)
+      return
+    }
+    // 선택 즉시 영상 볼륨 측정 후 20% 적용
+    const videoAsset = activeVideo ? videoAssets.find((v) => v.id === activeVideo.assetId) : null
+    if (videoAsset) {
+      measureVideoRMS(videoAsset.url).then((rms) => {
+        const bgmVol = Math.min(1, Math.max(0.05, rms * 0.2))
+        setMusicTrack({ assetId: asset.id, volume: parseFloat(bgmVol.toFixed(2)), videoVolume: 1 })
+      })
     } else {
-      setMusicTrack({ assetId: asset.id, volume: 0.8, videoVolume: 1 })
+      setMusicTrack({ assetId: asset.id, volume: 0.2, videoVolume: 1 })
     }
   }
 
@@ -138,43 +183,17 @@ export default function RightPanel() {
               })}
             </div>
 
-            {/* 선택된 음악 볼륨 컨트롤 */}
+            {/* 선택된 BGM 볼륨 표시 (읽기 전용) */}
             {musicTrack && (
-              <div className="mt-3 space-y-2">
-                {/* BGM 볼륨 */}
-                <div className="flex items-center gap-2">
-                  <Music className="w-3 h-3 text-[#F59E0B] shrink-0" />
-                  <input
-                    type="range" min={0} max={1} step={0.01}
-                    value={musicTrack.volume}
-                    onChange={(e) => updateMusicTrack({ volume: parseFloat(e.target.value) })}
-                    className="flex-1 accent-[#F59E0B] h-1 cursor-pointer"
-                  />
-                  <span className="text-[9px] text-[#555] w-7 text-right shrink-0">
-                    {Math.round(musicTrack.volume * 100)}%
-                  </span>
-                </div>
-                {/* 영상 원음 볼륨 */}
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => updateMusicTrack({ videoVolume: musicTrack.videoVolume > 0 ? 0 : 1 })}
-                    className="shrink-0"
-                  >
-                    {musicTrack.videoVolume > 0
-                      ? <Volume2 className="w-3 h-3 text-[#888]" />
-                      : <VolumeX className="w-3 h-3 text-[#555]" />}
-                  </button>
-                  <input
-                    type="range" min={0} max={1} step={0.01}
-                    value={musicTrack.videoVolume}
-                    onChange={(e) => updateMusicTrack({ videoVolume: parseFloat(e.target.value) })}
-                    className="flex-1 accent-[#888] h-1 cursor-pointer"
-                  />
-                  <span className="text-[9px] text-[#555] w-7 text-right shrink-0">
-                    {Math.round(musicTrack.videoVolume * 100)}%
-                  </span>
-                </div>
+              <div className="mt-2 px-2.5 py-1.5 rounded-lg bg-[#1E1E1E] border border-[#3a3a3a] flex items-center justify-between">
+                <span className="text-[10px] text-[#555]">auto volume</span>
+                <span className="text-[10px] text-[#F59E0B] font-mono">{Math.round(musicTrack.volume * 100)}%</span>
               </div>
+            )}
+
+            {/* 세트 미선택 안내 */}
+            {!activeSetId && (
+              <p className="text-[10px] text-[#444] px-1 mt-1">세트를 선택하면 BGM을 등록할 수 있습니다</p>
             )}
           </Section>
 

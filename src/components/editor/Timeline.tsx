@@ -1,7 +1,7 @@
 'use client'
 
 import { useRef, useCallback, useState, useEffect } from 'react'
-import { Play, Pause, SkipBack, Volume2, VolumeX } from 'lucide-react'
+import { Play, Pause, SkipBack } from 'lucide-react'
 import { useEditorStore } from '@/store/editorStore'
 
 const TRACK_HEIGHT = 28
@@ -15,7 +15,7 @@ export default function Timeline() {
     activeBanner, activeVideo,
     bannerAssets, videoAssets,
     musicTrack, musicAssets,
-    updateVideoClip, updateBannerClip, updateMusicTrack,
+    updateVideoClip, updateBannerClip,
   } = useEditorStore()
 
   const timelineRef = useRef<HTMLDivElement>(null)
@@ -138,39 +138,18 @@ export default function Timeline() {
             <span className="text-[10px] text-[#666]">Banner</span>
           </div>
 
-          {/* Video 레이블 + 볼륨 */}
-          <div className="flex items-center px-2 border-b border-[#2a2a2a] bg-[#1A1A1A] gap-1" style={{ height: TRACK_HEIGHT }}>
-            <div className="w-2 h-2 rounded-sm bg-[#4d88ff] mr-1 shrink-0" />
-            <span className="text-[10px] text-[#666] shrink-0">Video</span>
-            {musicTrack !== null && (
-              <button
-                onClick={() => updateMusicTrack({ videoVolume: musicTrack.videoVolume > 0 ? 0 : 1 })}
-                className="ml-auto text-[#555] hover:text-[#888] transition-colors"
-                title={`영상 음량: ${Math.round((musicTrack.videoVolume ?? 1) * 100)}%`}
-              >
-                {(musicTrack.videoVolume ?? 1) === 0
-                  ? <VolumeX className="w-3 h-3" />
-                  : <Volume2 className="w-3 h-3" />}
-              </button>
-            )}
+          {/* Video 레이블 */}
+          <div className="flex items-center px-2 border-b border-[#2a2a2a] bg-[#1A1A1A]" style={{ height: TRACK_HEIGHT }}>
+            <div className="w-2 h-2 rounded-sm bg-[#4d88ff] mr-1.5 shrink-0" />
+            <span className="text-[10px] text-[#666]">Video</span>
           </div>
 
-          {/* Music 레이블 + 볼륨 슬라이더 */}
+          {/* Music 레이블 */}
           {musicTrack && (
             <div className="flex items-center px-2 border-b border-[#2a2a2a] bg-[#1A1A1A] gap-1.5" style={{ height: TRACK_HEIGHT }}>
               <div className="w-2 h-2 rounded-sm bg-[#F59E0B] mr-1 shrink-0" />
               <span className="text-[10px] text-[#666] shrink-0">Music</span>
-              <input
-                type="range"
-                min={0} max={1} step={0.01}
-                value={musicTrack.volume}
-                onChange={(e) => updateMusicTrack({ volume: parseFloat(e.target.value) })}
-                className="flex-1 accent-[#F59E0B] h-1 cursor-pointer"
-                title={`배경음악 음량: ${Math.round(musicTrack.volume * 100)}%`}
-              />
-              <span className="text-[9px] text-[#555] shrink-0 w-6 text-right">
-                {Math.round(musicTrack.volume * 100)}
-              </span>
+              <span className="text-[9px] text-[#555] ml-auto">{Math.round(musicTrack.volume * 100)}%</span>
             </div>
           )}
         </div>
