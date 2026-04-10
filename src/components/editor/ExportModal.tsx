@@ -55,6 +55,8 @@ export default function ExportModal({ onClose }: Props) {
   const [isRunning, setIsRunning] = useState(false)
   const downloadLinkRef = useRef<HTMLAnchorElement>(null)
   const measuredFactorRef = useRef<number | null>(null)
+  // 세트 간 에셋 재사용: 이미 FFmpeg FS에 쓴 파일 추적
+  const writtenAssetsRef = useRef<Set<string>>(new Set())
 
   const qualityCfg = QUALITY_MAP[quality]
 
@@ -88,26 +90,29 @@ export default function ExportModal({ onClose }: Props) {
   ): Promise<Blob> {
 
     const videoAsset = videoAssets.find((v) => v.id === video!.assetId)!
-    console.log('[export] videoAsset url:', videoAsset.url.slice(0, 60), 'w:', videoAsset.width, 'h:', videoAsset.height)
+    const written = writtenAssetsRef.current
 
-    console.log('[export] fetching video...')
-    const videoData = await fetchToUint8Array(videoAsset.url)
-    console.log('[export] video bytes:', videoData.byteLength)
-    await ffmpeg.writeFile('input.mp4', videoData)
-    console.log('[export] wrote input.mp4')
+    // ── 파일 쓰기 (같은 에셋은 세트 간 재사용) ──────────────
+    const videoKey = `video:${videoAsset.id}`
+    if (!written.has(videoKey)) {
+      const videoData = await fetchToUint8Array(videoAsset.url)
+      await ffmpeg.writeFile('input.mp4', videoData)
+      written.add(videoKey)
+    }
 
-    const speed      = video!.speed
-    const inPoint    = video!.inPoint
-    const outPoint   = video!.outPoint
-    const clipLen    = (outPoint - inPoint) / speed   // 실제 출력 길이(초)
+    const speed    = video!.speed
+    const inPoint  = video!.inPoint
+    const outPoint = video!.outPoint
+    const clipLen  = (outPoint - inPoint) / speed
 
     const bannerAsset = banner ? bannerAssets.find((b) => b.id === banner.assetId) : null
     const outW = bannerAsset?.width  ?? resW
     const outH = bannerAsset?.height ?? resH
 
+    // 출력 해상도 기준으로 영상 스케일 계산
+    // (4K 원본을 전부 디코딩하지 않고 출력 크기에 맞게만 처리)
     const vidW = Math.round(videoAsset.width  * video!.scaleX)
     const vidH = Math.round(videoAsset.height * video!.scaleY)
-    // 짝수 보정 (libx264 요구사항)
     const safeW = vidW % 2 === 0 ? vidW : vidW + 1
     const safeH = vidH % 2 === 0 ? vidH : vidH + 1
     const vidX  = Math.round(video!.x - safeW / 2)
@@ -117,10 +122,6 @@ export default function ExportModal({ onClose }: Props) {
     const vSpeedFilter = speed !== 1 ? `setpts=${(1 / speed).toFixed(6)}*PTS,` : ''
 
     // ── 입력 구성 ─────────────────────────────────────────
-    // index 0: 영상 (input seeking으로 클립)
-    // index 1: 배너 이미지 (있을 때)
-    // index 2(or 1): BGM (있을 때) — stream_loop -1로 무한 반복
-    // index last: anullsrc (silent fallback — 영상에 오디오 없을 때 대비)
     const inputs: string[] = [
       '-ss', String(inPoint),
       '-to', String(outPoint),
@@ -130,77 +131,73 @@ export default function ExportModal({ onClose }: Props) {
     let musicIdx  = -1
 
     if (bannerAsset) {
-      console.log('[export] fetching banner dataUrl length:', bannerAsset.dataUrl.length)
-      const bannerData = await fetchToUint8Array(bannerAsset.dataUrl)
-      console.log('[export] banner bytes:', bannerData.byteLength)
-      await ffmpeg.writeFile('banner.png', bannerData)
-      console.log('[export] wrote banner.png')
+      const bannerKey = `banner:${bannerAsset.id}`
+      if (!written.has(bannerKey)) {
+        const bannerData = await fetchToUint8Array(bannerAsset.dataUrl)
+        await ffmpeg.writeFile('banner.png', bannerData)
+        written.add(bannerKey)
+      }
       inputs.push('-i', 'banner.png')
       bannerIdx = 1
     }
 
     const musicAsset = musicTrack ? musicAssets.find((m) => m.id === musicTrack.assetId) : null
     if (musicAsset) {
-      console.log('[export] fetching music:', musicAsset.url.slice(0, 60))
-      const musicData = await fetchToUint8Array(musicAsset.url)
-      console.log('[export] music bytes:', musicData.byteLength)
-      await ffmpeg.writeFile('bgm.mp3', musicData)
-      console.log('[export] wrote bgm.mp3')
+      const musicKey = `music:${musicAsset.id}`
+      if (!written.has(musicKey)) {
+        const musicData = await fetchToUint8Array(musicAsset.url)
+        await ffmpeg.writeFile('bgm.mp3', musicData)
+        written.add(musicKey)
+      }
       inputs.push('-stream_loop', '-1', '-i', 'bgm.mp3')
       musicIdx = bannerIdx >= 0 ? 2 : 1
     }
 
-    // anullsrc를 별도 입력으로 추가 — 영상 오디오 스트림 없을 때 대비
     const silenceIdx = inputs.filter((a) => a === '-i').length
     inputs.push('-f', 'lavfi', '-i', `anullsrc=r=44100:cl=stereo:d=${clipLen}`)
 
-    // ── 비디오 필터 체인 ──────────────────────────────────
+    // ── 비디오 필터: color+overlay 대신 pad 사용 (더 빠름) ──
+    // pad는 배경 생성+영상 배치를 1패스로 처리
     let vf: string
+    const padX = Math.max(0, vidX)
+    const padY = Math.max(0, vidY)
+
     if (bannerIdx >= 0) {
       vf =
         `[0:v]${vSpeedFilter}scale=${safeW}:${safeH}[scaled];` +
-        `color=black:size=${outW}x${outH}:rate=30[bg];` +
-        `[bg][scaled]overlay=${vidX}:${vidY}[vid];` +
+        `[scaled]pad=${outW}:${outH}:${padX}:${padY}:black[padded];` +
         `[${bannerIdx}:v]scale=${outW}:${outH}[banner];` +
-        `[vid][banner]overlay=0:0[vout]`
+        `[padded][banner]overlay=0:0[vout]`
     } else {
       vf =
         `[0:v]${vSpeedFilter}scale=${safeW}:${safeH}[scaled];` +
-        `color=black:size=${outW}x${outH}:rate=30[bg];` +
-        `[bg][scaled]overlay=${vidX}:${vidY}[vout]`
+        `[scaled]pad=${outW}:${outH}:${padX}:${padY}:black[vout]`
     }
 
-    // ── 오디오 필터 체인 ──────────────────────────────────
-    // 영상 오디오가 없을 수 있으므로 anullsrc와 amix해서 항상 유효한 스트림 확보
-    // amix duration=shortest → 짧은 쪽 기준 (silence는 clipLen으로 고정됨)
+    // ── 오디오 필터 ────────────────────────────────────────
     const musicVol = musicTrack?.volume ?? 0
-
     const maps: string[] = ['-map', '[vout]']
     let af: string
 
-    // [0:a]는 영상에 오디오 스트림이 없으면 filter_complex 전체를 실패시킴
-    // → anullsrc 입력을 항상 기본 오디오로 사용
     if (musicIdx >= 0) {
-      af =
-        `[${musicIdx}:a]volume=${musicVol.toFixed(3)}[aout]`
+      af = `[${musicIdx}:a]volume=${musicVol.toFixed(3)}[aout]`
       maps.push('-map', '[aout]')
     } else {
-      // BGM 없음 — anullsrc 무음
       af = `[${silenceIdx}:a]anull[aout]`
       maps.push('-map', '[aout]')
     }
 
     const filterComplex = `${vf};${af}`
 
-    // -t는 output duration 제한 (input seeking 이후 추가 안전장치)
     const cmd: string[] = [
       ...inputs,
       '-filter_complex', filterComplex,
       ...maps,
       '-t', String(clipLen),
       '-c:v', 'libx264',
-      '-preset', qualityCfg.preset,
+      '-preset', 'ultrafast',   // fast → ultrafast: 싱글스레드 WASM에서 2~3배 빠름
       '-crf', String(qualityCfg.crf),
+      '-tune', 'zerolatency',   // 추가 인코딩 최적화
       '-pix_fmt', 'yuv420p',
       '-c:a', 'aac',
       '-b:a', '128k',
@@ -209,7 +206,6 @@ export default function ExportModal({ onClose }: Props) {
       filename,
     ]
 
-    console.log('[export] cmd:', cmd.join(' '))
     await ffmpeg.exec(cmd)
 
     const data = await ffmpeg.readFile(filename)
@@ -222,6 +218,7 @@ export default function ExportModal({ onClose }: Props) {
     if (selectedIds.size === 0) return
     setIsRunning(true)
     measuredFactorRef.current = null
+    writtenAssetsRef.current = new Set()  // 세트 간 에셋 캐시 초기화
 
     const selectedSets = Array.from(selectedIds)
       .map((id) => sets.find((s) => s.id === id))
