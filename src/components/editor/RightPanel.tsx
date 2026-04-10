@@ -37,7 +37,7 @@ async function measureVideoRMS(videoUrl: string): Promise<number> {
 export default function RightPanel() {
   const {
     activeVideo, updateVideoClip, quality, setQuality, activeBanner, bannerAssets,
-    musicAssets, musicTrack, addMusicAsset, setMusicTrack, videoAssets, activeSetId,
+    musicAssets, musicTrack, addMusicAsset, setMusicTrack, updateMusicTrack, videoAssets, activeSetId,
   } = useEditorStore()
   const [showExport, setShowExport] = useState(false)
   const prevSetId = useRef<string | null>(null)
@@ -137,26 +137,24 @@ export default function RightPanel() {
             </div>
           </Section>
 
-          {/* Speed */}
-          {activeVideo && (
-            <Section title="Speed" icon={<Film className="w-3.5 h-3.5" />}>
-              <div className="grid grid-cols-2 gap-1">
-                {SPEED_OPTIONS.map((s) => (
-                  <button
-                    key={s}
-                    onClick={() => updateVideoClip({ speed: s })}
-                    className={`py-1.5 rounded-lg text-xs border font-medium transition-all ${
-                      activeVideo.speed === s
-                        ? 'bg-[#8B5CF6] border-[#8B5CF6] text-white'
-                        : 'border-[#444] text-[#888] hover:border-[#666] hover:text-[#E0E0E0]'
-                    }`}
-                  >
-                    {s}x
-                  </button>
-                ))}
-              </div>
-            </Section>
-          )}
+          {/* Speed — 항상 표시, 영상 없으면 비활성화 */}
+          <Section title="Speed" icon={<Film className="w-3.5 h-3.5" />}>
+            <div className={`grid grid-cols-2 gap-1 ${!activeVideo ? 'opacity-30 pointer-events-none' : ''}`}>
+              {SPEED_OPTIONS.map((s) => (
+                <button
+                  key={s}
+                  onClick={() => updateVideoClip({ speed: s })}
+                  className={`py-1.5 rounded-lg text-xs border font-medium transition-all ${
+                    activeVideo?.speed === s
+                      ? 'bg-[#8B5CF6] border-[#8B5CF6] text-white'
+                      : 'border-[#444] text-[#888] hover:border-[#666] hover:text-[#E0E0E0]'
+                  }`}
+                >
+                  {s}x
+                </button>
+              ))}
+            </div>
+          </Section>
 
           {/* Background Music */}
           <Section title="BGM" icon={<Music className="w-3.5 h-3.5" />}>
@@ -183,11 +181,35 @@ export default function RightPanel() {
               })}
             </div>
 
-            {/* 선택된 BGM 볼륨 표시 (읽기 전용) */}
+            {/* 볼륨 슬라이더 */}
             {musicTrack && (
-              <div className="mt-2 px-2.5 py-1.5 rounded-lg bg-[#1E1E1E] border border-[#3a3a3a] flex items-center justify-between">
-                <span className="text-[10px] text-[#555]">auto volume</span>
-                <span className="text-[10px] text-[#F59E0B] font-mono">{Math.round(musicTrack.volume * 100)}%</span>
+              <div className="mt-3 space-y-2.5">
+                {/* BGM 볼륨 */}
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-[10px] text-[#555]">BGM</span>
+                    <span className="text-[10px] text-[#F59E0B] font-mono">{Math.round(musicTrack.volume * 100)}%</span>
+                  </div>
+                  <input
+                    type="range" min={0} max={1} step={0.01}
+                    value={musicTrack.volume}
+                    onChange={(e) => updateMusicTrack({ volume: parseFloat(e.target.value) })}
+                    className="w-full accent-[#F59E0B] h-1 cursor-pointer"
+                  />
+                </div>
+                {/* 영상 원음 볼륨 */}
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-[10px] text-[#555]">Video</span>
+                    <span className="text-[10px] text-[#888] font-mono">{Math.round(musicTrack.videoVolume * 100)}%</span>
+                  </div>
+                  <input
+                    type="range" min={0} max={1} step={0.01}
+                    value={musicTrack.videoVolume}
+                    onChange={(e) => updateMusicTrack({ videoVolume: parseFloat(e.target.value) })}
+                    className="w-full accent-[#888] h-1 cursor-pointer"
+                  />
+                </div>
               </div>
             )}
 

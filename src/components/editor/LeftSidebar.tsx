@@ -191,7 +191,7 @@ export default function LeftSidebar({ user }: Props) {
             {/* 에셋 그리드 + 드롭존 overlay */}
             <div
               className="flex-1 overflow-y-auto p-2 relative"
-              onDragOver={(e) => { e.preventDefault(); if (activeBanner) setVideoDragging(true) }}
+              onDragOver={(e) => { e.preventDefault(); setVideoDragging(true) }}
               onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setVideoDragging(false) }}
               onDrop={onVideoDrop}
             >

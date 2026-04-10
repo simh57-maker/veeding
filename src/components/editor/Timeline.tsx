@@ -1,7 +1,7 @@
 'use client'
 
 import { useRef, useCallback, useState, useEffect } from 'react'
-import { Play, Pause, SkipBack } from 'lucide-react'
+import { Play, Pause, SkipBack, Volume2 } from 'lucide-react'
 import { useEditorStore } from '@/store/editorStore'
 
 const TRACK_HEIGHT = 28
@@ -15,8 +15,18 @@ export default function Timeline() {
     activeBanner, activeVideo,
     bannerAssets, videoAssets,
     musicTrack, musicAssets,
-    updateVideoClip, updateBannerClip,
+    updateVideoClip, updateBannerClip, updateMusicTrack,
   } = useEditorStore()
+
+  const [showVideoVolume, setShowVideoVolume] = useState(false)
+
+  // 팝오버 외부 클릭 시 닫기
+  useEffect(() => {
+    if (!showVideoVolume) return
+    const close = () => setShowVideoVolume(false)
+    window.addEventListener('click', close)
+    return () => window.removeEventListener('click', close)
+  }, [showVideoVolume])
 
   const timelineRef = useRef<HTMLDivElement>(null)
   const [trackWidth, setTrackWidth] = useState(0)
@@ -138,10 +148,37 @@ export default function Timeline() {
             <span className="text-[10px] text-[#666]">Banner</span>
           </div>
 
-          {/* Video 레이블 */}
-          <div className="flex items-center px-2 border-b border-[#2a2a2a] bg-[#1A1A1A]" style={{ height: TRACK_HEIGHT }}>
+          {/* Video 레이블 + 볼륨 팝오버 */}
+          <div className="relative flex items-center px-2 border-b border-[#2a2a2a] bg-[#1A1A1A]" style={{ height: TRACK_HEIGHT }}>
             <div className="w-2 h-2 rounded-sm bg-[#4d88ff] mr-1.5 shrink-0" />
             <span className="text-[10px] text-[#666]">Video</span>
+            {musicTrack && (
+              <button
+                onClick={(e) => { e.stopPropagation(); setShowVideoVolume((v) => !v) }}
+                className="ml-auto text-[#555] hover:text-[#888] transition-colors"
+              >
+                <Volume2 className="w-3 h-3" />
+              </button>
+            )}
+            {/* 볼륨 팝오버 */}
+            {showVideoVolume && musicTrack && (
+              <div
+                className="absolute left-full top-0 ml-1 z-30 bg-[#2C2C2C] border border-[#444] rounded-lg p-2.5 shadow-xl"
+                style={{ width: 140 }}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="text-[10px] text-[#888]">Video Vol</span>
+                  <span className="text-[10px] text-[#4d88ff] font-mono">{Math.round(musicTrack.videoVolume * 100)}%</span>
+                </div>
+                <input
+                  type="range" min={0} max={1} step={0.01}
+                  value={musicTrack.videoVolume}
+                  onChange={(e) => updateMusicTrack({ videoVolume: parseFloat(e.target.value) })}
+                  className="w-full accent-[#4d88ff] h-1 cursor-pointer"
+                />
+              </div>
+            )}
           </div>
 
           {/* Music 레이블 */}
