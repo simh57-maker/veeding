@@ -108,9 +108,8 @@ export default function Timeline() {
   const bannerAsset = activeBanner ? bannerAssets.find((b) => b.id === activeBanner.assetId) : null
   const musicAsset  = musicTrack   ? musicAssets.find((m) => m.id === musicTrack.assetId)   : null
 
-  // 트랙 수에 따른 높이: header(36) + tracks(28 each) + 여유
-  const trackCount = 2 + (musicTrack ? 1 : 0)
-  const totalHeight = 36 + HEADER_HEIGHT + TRACK_HEIGHT * trackCount + 8
+  // 항상 3트랙 (Banner + Video + Music)
+  const totalHeight = 36 + HEADER_HEIGHT + TRACK_HEIGHT * 3 + 8
 
   return (
     <div className="bg-[#1A1A1A] border-t border-[#333] flex flex-col shrink-0" style={{ height: totalHeight }}>
@@ -181,14 +180,14 @@ export default function Timeline() {
             )}
           </div>
 
-          {/* Music 레이블 */}
-          {musicTrack && (
-            <div className="flex items-center px-2 border-b border-[#2a2a2a] bg-[#1A1A1A] gap-1.5" style={{ height: TRACK_HEIGHT }}>
-              <div className="w-2 h-2 rounded-sm bg-[#F59E0B] mr-1 shrink-0" />
-              <span className="text-[10px] text-[#666] shrink-0">Music</span>
+          {/* Music 레이블 — 항상 표시 */}
+          <div className="flex items-center px-2 border-b border-[#2a2a2a] bg-[#1A1A1A] gap-1.5" style={{ height: TRACK_HEIGHT }}>
+            <div className={`w-2 h-2 rounded-sm mr-1 shrink-0 ${musicTrack ? 'bg-[#F59E0B]' : 'bg-[#333]'}`} />
+            <span className={`text-[10px] shrink-0 ${musicTrack ? 'text-[#666]' : 'text-[#3a3a3a]'}`}>Music</span>
+            {musicTrack && (
               <span className="text-[9px] text-[#555] ml-auto">{Math.round(musicTrack.volume * 100)}%</span>
-            </div>
-          )}
+            )}
+          </div>
         </div>
 
         {/* 트랙 본체 */}
@@ -260,15 +259,14 @@ export default function Timeline() {
                 )}
               </div>
 
-              {/* Music 트랙 */}
-              {musicTrack && musicAsset && (
-                <div className="relative border-b border-[#2a2a2a]" style={{ height: TRACK_HEIGHT }}>
+              {/* Music 트랙 — 항상 행 존재, BGM 없으면 빈 행 */}
+              <div className="relative border-b border-[#2a2a2a]" style={{ height: TRACK_HEIGHT }}>
+                {musicTrack && musicAsset && (
                   <div className="absolute top-1 left-0" style={{ width: timeToX(projectDuration) }}>
                     <div
                       className="relative flex items-center bg-[#3d2a05] border border-[#7a5a0a] rounded overflow-hidden"
                       style={{ width: '100%', height: TRACK_HEIGHT - 8 }}
                     >
-                      {/* 볼륨 파형 표현 (진행 바) */}
                       <div
                         className="absolute inset-0 bg-[#F59E0B]/20"
                         style={{ width: `${musicTrack.volume * 100}%` }}
@@ -281,9 +279,10 @@ export default function Timeline() {
                       </span>
                     </div>
                   </div>
-                </div>
-              )}
-            </div>
+                )}
+              </div>
+
+            </div>{/* end 트랙들 */}
 
             {/* 플레이헤드 */}
             <div

@@ -5,7 +5,7 @@ import { useEditorStore, QUALITY_MAP, Quality, MusicAsset } from '@/store/editor
 import { Settings2, Film, Download, Monitor, Music } from 'lucide-react'
 import ExportModal from './ExportModal'
 
-const SPEED_OPTIONS = [1.0, 0.8, 0.7, 0.6]
+const SPEED_OPTIONS = [1.0, 1.2, 1.3, 1.5]
 
 const BUILT_IN_MUSIC = [
   { name: 'Jarabe de Tequila - Inaban & Nabani', path: '/asset/music/Jarabe de Tequila - Inaban _ Nabani.mp3' },
@@ -177,35 +177,19 @@ export default function RightPanel() {
               ))}
             </select>
 
-            {/* 볼륨 슬라이더 */}
+            {/* BGM 볼륨 슬라이더 */}
             {musicTrack && (
-              <div className="mt-3 space-y-2.5">
-                {/* BGM 볼륨 */}
-                <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-[10px] text-[#555]">BGM</span>
-                    <span className="text-[10px] text-[#F59E0B] font-mono">{Math.round(musicTrack.volume * 100)}%</span>
-                  </div>
-                  <input
-                    type="range" min={0} max={1} step={0.01}
-                    value={musicTrack.volume}
-                    onChange={(e) => updateMusicTrack({ volume: parseFloat(e.target.value) })}
-                    className="w-full accent-[#F59E0B] h-1 cursor-pointer"
-                  />
+              <div className="mt-3">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-[10px] text-[#555]">BGM Volume</span>
+                  <span className="text-[10px] text-[#F59E0B] font-mono">{Math.round(musicTrack.volume * 100)}%</span>
                 </div>
-                {/* 영상 원음 볼륨 */}
-                <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-[10px] text-[#555]">Video</span>
-                    <span className="text-[10px] text-[#888] font-mono">{Math.round(musicTrack.videoVolume * 100)}%</span>
-                  </div>
-                  <input
-                    type="range" min={0} max={1} step={0.01}
-                    value={musicTrack.videoVolume}
-                    onChange={(e) => updateMusicTrack({ videoVolume: parseFloat(e.target.value) })}
-                    className="w-full accent-[#888] h-1 cursor-pointer"
-                  />
-                </div>
+                <input
+                  type="range" min={0} max={1} step={0.01}
+                  value={musicTrack.volume}
+                  onChange={(e) => updateMusicTrack({ volume: parseFloat(e.target.value) })}
+                  className="w-full accent-[#F59E0B] h-1 cursor-pointer"
+                />
               </div>
             )}
 
