@@ -76,7 +76,6 @@ export default function ExportModal({ onClose }: Props) {
     ffmpeg: import('@ffmpeg/ffmpeg').FFmpeg,
     banner: typeof activeBanner,
     video: typeof activeVideo,
-    duration: number,
     filename: string,
     onProgress: (p: number) => void,
   ): Promise<Blob> {
@@ -113,11 +112,14 @@ export default function ExportModal({ onClose }: Props) {
 
     // 속도 필터
     const vSpeedFilter = speed !== 1 ? `setpts=${(1 / speed).toFixed(6)}*PTS,` : ''
-    // atempo는 0.5~2.0 범위만 지원 — 범위 내이면 단일 필터
+    // atempo는 0.5~2.0 범위만 지원
     const aSpeedFilter = speed !== 1 ? `atempo=${speed.toFixed(4)},` : ''
 
-    // 입력 구성
-    // -ss / -to 를 입력 앞에 배치 (input seeking — 빠르고 정확)
+    // ── 입력 구성 ─────────────────────────────────────────
+    // index 0: 영상 (input seeking으로 클립)
+    // index 1: 배너 이미지 (있을 때)
+    // index 2(or 1): BGM (있을 때) — stream_loop -1로 무한 반복
+    // index last: anullsrc (silent fallback — 영상에 오디오 없을 때 대비)
     const inputs: string[] = [
       '-ss', String(inPoint),
       '-to', String(outPoint),
@@ -137,10 +139,13 @@ export default function ExportModal({ onClose }: Props) {
     if (musicAsset) {
       const musicData = await fetchToUint8Array(musicAsset.url)
       await ffmpeg.writeFile('bgm.mp3', musicData)
-      // stream_loop -1 로 반복, duration은 -t로 잘라냄
       inputs.push('-stream_loop', '-1', '-i', 'bgm.mp3')
       musicIdx = bannerIdx >= 0 ? 2 : 1
     }
+
+    // anullsrc를 별도 입력으로 추가 — 영상 오디오 스트림 없을 때 대비
+    const silenceIdx = inputs.filter((a) => a === '-i').length
+    inputs.push('-f', 'lavfi', '-i', `anullsrc=r=44100:cl=stereo:d=${clipLen}`)
 
     // ── 비디오 필터 체인 ──────────────────────────────────
     let vf: string
@@ -159,39 +164,38 @@ export default function ExportModal({ onClose }: Props) {
     }
 
     // ── 오디오 필터 체인 ──────────────────────────────────
-    // 영상에 오디오 스트림이 있는지 확인하기 어려우므로
-    // anullsrc 로 silent fallback을 만들고 amix — 없으면 그냥 매핑
+    // 영상 오디오가 없을 수 있으므로 anullsrc와 amix해서 항상 유효한 스트림 확보
+    // amix duration=shortest → 짧은 쪽 기준 (silence는 clipLen으로 고정됨)
     const videoVol = musicTrack?.videoVolume ?? 1
     const musicVol = musicTrack?.volume      ?? 0
 
-    let af   = ''
     const maps: string[] = ['-map', '[vout]']
+    let af: string
 
     if (musicIdx >= 0) {
-      // 영상 오디오가 없을 수도 있으므로 anullsrc 로 대체 후 믹싱
+      // 영상 오디오 + silence fallback → 속도/볼륨 처리 → BGM과 믹싱
       af =
-        `anullsrc=r=44100:cl=stereo[silence];` +
-        `[0:a]${aSpeedFilter}volume=${videoVol.toFixed(3)}[va0];` +
-        `[silence][va0]amix=inputs=2:duration=first[va];` +
+        `[0:a]${aSpeedFilter}volume=${videoVol.toFixed(3)}[va_raw];` +
+        `[${silenceIdx}:a][va_raw]amix=inputs=2:duration=first[va];` +
         `[${musicIdx}:a]volume=${musicVol.toFixed(3)}[ma];` +
         `[va][ma]amix=inputs=2:duration=first[aout]`
       maps.push('-map', '[aout]')
     } else {
-      // BGM 없음 — 영상 오디오만 (없으면 anullsrc)
+      // BGM 없음 — 영상 오디오만 (silence fallback 포함)
       af =
-        `anullsrc=r=44100:cl=stereo[silence];` +
-        `[0:a]${aSpeedFilter}volume=${videoVol.toFixed(3)}[va0];` +
-        `[silence][va0]amix=inputs=2:duration=first[aout]`
+        `[0:a]${aSpeedFilter}volume=${videoVol.toFixed(3)}[va_raw];` +
+        `[${silenceIdx}:a][va_raw]amix=inputs=2:duration=first[aout]`
       maps.push('-map', '[aout]')
     }
 
     const filterComplex = `${vf};${af}`
 
+    // -t는 output duration 제한 (input seeking 이후 추가 안전장치)
     const cmd: string[] = [
       ...inputs,
-      '-t', String(clipLen),
       '-filter_complex', filterComplex,
       ...maps,
+      '-t', String(clipLen),
       '-c:v', 'libx264',
       '-preset', qualityCfg.preset,
       '-crf', String(qualityCfg.crf),
@@ -203,6 +207,7 @@ export default function ExportModal({ onClose }: Props) {
       filename,
     ]
 
+    console.log('[export] cmd:', cmd.join(' '))
     await ffmpeg.exec(cmd)
     ffmpeg.off('progress', progressHandler)
 
@@ -256,7 +261,7 @@ export default function ExportModal({ onClose }: Props) {
           const filename = `out_${i}.mp4`
 
           const blob = await renderOne(
-            ffmpeg, found.banner, found.video, found.projectDuration, filename,
+            ffmpeg, found.banner, found.video, filename,
             (p) => {
               if (p <= 0) return
               const elapsed = (performance.now() - startTs) / 1000
