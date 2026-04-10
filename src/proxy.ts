@@ -5,13 +5,13 @@ export default auth((req) => {
   const isLoggedIn = !!req.auth
   const { pathname } = req.nextUrl
 
-  if (!isLoggedIn && (pathname.startsWith('/editor') || pathname.startsWith('/admin'))) {
-    return NextResponse.redirect(new URL('/login', req.url))
+  if (!isLoggedIn && pathname.startsWith('/admin')) {
+    return NextResponse.redirect(new URL('/api/auth/signin', req.url))
   }
 
   return NextResponse.next()
 })
 
 export const config = {
-  matcher: ['/editor/:path*', '/admin/:path*'],
+  matcher: ['/admin/:path*'],
 }
