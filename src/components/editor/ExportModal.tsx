@@ -14,9 +14,9 @@ interface ExportJob {
   setId: string
   label: string
   status: ExportStatus
-  progress: number        // 0~100
-  remainSec: number | null  // 남은 초 (렌더 중 실시간)
-  totalSec: number | null   // 이 세트 실제 소요 (완료 후)
+  progress: number
+  remainSec: number | null
+  totalSec: number | null
   error?: string
 }
 
@@ -26,6 +26,13 @@ function fmtRemain(s: number): string {
   const m = Math.floor(s / 60)
   const sec = Math.ceil(s % 60)
   return sec > 0 ? `${m}분 ${sec}초 남음` : `${m}분 남음`
+}
+
+/** blob: / http: 모두 처리하는 fetch → Uint8Array */
+async function fetchToUint8Array(url: string): Promise<Uint8Array> {
+  const res = await fetch(url)
+  if (!res.ok) throw new Error(`fetch failed: ${url}`)
+  return new Uint8Array(await res.arrayBuffer())
 }
 
 export default function ExportModal({ onClose }: Props) {
@@ -67,23 +74,30 @@ export default function ExportModal({ onClose }: Props) {
   // ─── 단일 세트 렌더링 ───────────────────────────────────
   async function renderOne(
     ffmpeg: import('@ffmpeg/ffmpeg').FFmpeg,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    fetchFile: (data: any) => Promise<Uint8Array>,
     banner: typeof activeBanner,
     video: typeof activeVideo,
     duration: number,
     filename: string,
     onProgress: (p: number) => void,
   ): Promise<Blob> {
-    ffmpeg.on('progress', ({ progress: p }) => onProgress(Math.round(p * 100)))
+
+    // progress 리스너 — 매 세트마다 새로 등록하기 위해 off 후 on
+    const progressHandler = ({ progress: p }: { progress: number }) => {
+      onProgress(Math.min(99, Math.round(p * 100)))
+    }
+    ffmpeg.off('progress', progressHandler)
+    ffmpeg.on('progress', progressHandler)
 
     const videoAsset = videoAssets.find((v) => v.id === video!.assetId)!
-    const videoData = await fetchFile(videoAsset.url)
+
+    // blob: URL도 fetch로 처리
+    const videoData = await fetchToUint8Array(videoAsset.url)
     await ffmpeg.writeFile('input.mp4', videoData)
 
-    const inPoint = video!.inPoint
-    const speedFilter = video!.speed !== 1 ? `setpts=${(1 / video!.speed).toFixed(4)}*PTS,` : ''
-    const audioSpeedFilter = video!.speed !== 1 ? `atempo=${video!.speed.toFixed(4)},` : ''
+    const speed      = video!.speed
+    const inPoint    = video!.inPoint
+    const outPoint   = video!.outPoint
+    const clipLen    = (outPoint - inPoint) / speed   // 실제 출력 길이(초)
 
     const bannerAsset = banner ? bannerAssets.find((b) => b.id === banner.assetId) : null
     const outW = bannerAsset?.width  ?? resW
@@ -91,78 +105,106 @@ export default function ExportModal({ onClose }: Props) {
 
     const vidW = Math.round(videoAsset.width  * video!.scaleX)
     const vidH = Math.round(videoAsset.height * video!.scaleY)
-    const vidX = Math.round(video!.x - vidW / 2)
-    const vidY = Math.round(video!.y - vidH / 2)
+    // 짝수 보정 (libx264 요구사항)
+    const safeW = vidW % 2 === 0 ? vidW : vidW + 1
+    const safeH = vidH % 2 === 0 ? vidH : vidH + 1
+    const vidX  = Math.round(video!.x - safeW / 2)
+    const vidY  = Math.round(video!.y - safeH / 2)
 
-    const musicAsset = musicTrack ? musicAssets.find((m) => m.id === musicTrack.assetId) : null
-    const videoVol = musicTrack?.videoVolume ?? 1
-    const musicVol = musicTrack?.volume ?? 0
+    // 속도 필터
+    const vSpeedFilter = speed !== 1 ? `setpts=${(1 / speed).toFixed(6)}*PTS,` : ''
+    // atempo는 0.5~2.0 범위만 지원 — 범위 내이면 단일 필터
+    const aSpeedFilter = speed !== 1 ? `atempo=${speed.toFixed(4)},` : ''
 
-    // 입력 파일 순서: [0]=input.mp4, [1]=banner.png(있으면), [2]=music(있으면)
-    const inputs = ['-ss', String(inPoint), '-i', 'input.mp4']
+    // 입력 구성
+    // -ss / -to 를 입력 앞에 배치 (input seeking — 빠르고 정확)
+    const inputs: string[] = [
+      '-ss', String(inPoint),
+      '-to', String(outPoint),
+      '-i', 'input.mp4',
+    ]
     let bannerIdx = -1
-    let musicIdx = -1
+    let musicIdx  = -1
 
     if (bannerAsset) {
-      const bannerData = await fetchFile(bannerAsset.dataUrl)
+      const bannerData = await fetchToUint8Array(bannerAsset.dataUrl)
       await ffmpeg.writeFile('banner.png', bannerData)
       inputs.push('-i', 'banner.png')
       bannerIdx = 1
     }
 
+    const musicAsset = musicTrack ? musicAssets.find((m) => m.id === musicTrack.assetId) : null
     if (musicAsset) {
-      const musicData = await fetchFile(musicAsset.url)
-      await ffmpeg.writeFile('music_input', musicData)
-      inputs.push('-stream_loop', '-1', '-i', 'music_input')
+      const musicData = await fetchToUint8Array(musicAsset.url)
+      await ffmpeg.writeFile('bgm.mp3', musicData)
+      // stream_loop -1 로 반복, duration은 -t로 잘라냄
+      inputs.push('-stream_loop', '-1', '-i', 'bgm.mp3')
       musicIdx = bannerIdx >= 0 ? 2 : 1
     }
 
-    // 비디오 필터
-    let videoFilter = ''
+    // ── 비디오 필터 체인 ──────────────────────────────────
+    let vf: string
     if (bannerIdx >= 0) {
-      videoFilter =
-        `[0:v]${speedFilter}scale=${vidW}:${vidH}[scaled];` +
+      vf =
+        `[0:v]${vSpeedFilter}scale=${safeW}:${safeH}[scaled];` +
         `color=black:size=${outW}x${outH}:rate=30[bg];` +
         `[bg][scaled]overlay=${vidX}:${vidY}[vid];` +
         `[${bannerIdx}:v]scale=${outW}:${outH}[banner];` +
         `[vid][banner]overlay=0:0[vout]`
     } else {
-      videoFilter =
-        `[0:v]${speedFilter}scale=${vidW}:${vidH}[scaled];` +
+      vf =
+        `[0:v]${vSpeedFilter}scale=${safeW}:${safeH}[scaled];` +
         `color=black:size=${outW}x${outH}:rate=30[bg];` +
         `[bg][scaled]overlay=${vidX}:${vidY}[vout]`
     }
 
-    // 오디오 필터
-    let audioFilter = ''
-    const hasSrcAudio = true   // 영상에 오디오 트랙이 없어도 anullsrc로 처리
+    // ── 오디오 필터 체인 ──────────────────────────────────
+    // 영상에 오디오 스트림이 있는지 확인하기 어려우므로
+    // anullsrc 로 silent fallback을 만들고 amix — 없으면 그냥 매핑
+    const videoVol = musicTrack?.videoVolume ?? 1
+    const musicVol = musicTrack?.volume      ?? 0
+
+    let af   = ''
+    const maps: string[] = ['-map', '[vout]']
+
     if (musicIdx >= 0) {
-      audioFilter =
-        `[0:a]${audioSpeedFilter}volume=${videoVol.toFixed(3)}[va];` +
+      // 영상 오디오가 없을 수도 있으므로 anullsrc 로 대체 후 믹싱
+      af =
+        `anullsrc=r=44100:cl=stereo[silence];` +
+        `[0:a]${aSpeedFilter}volume=${videoVol.toFixed(3)}[va0];` +
+        `[silence][va0]amix=inputs=2:duration=first[va];` +
         `[${musicIdx}:a]volume=${musicVol.toFixed(3)}[ma];` +
         `[va][ma]amix=inputs=2:duration=first[aout]`
-    } else if (hasSrcAudio) {
-      audioFilter = `[0:a]${audioSpeedFilter}volume=${videoVol.toFixed(3)}[aout]`
+      maps.push('-map', '[aout]')
+    } else {
+      // BGM 없음 — 영상 오디오만 (없으면 anullsrc)
+      af =
+        `anullsrc=r=44100:cl=stereo[silence];` +
+        `[0:a]${aSpeedFilter}volume=${videoVol.toFixed(3)}[va0];` +
+        `[silence][va0]amix=inputs=2:duration=first[aout]`
+      maps.push('-map', '[aout]')
     }
 
-    const filterComplex = audioFilter ? `${videoFilter};${audioFilter}` : videoFilter
-    const maps = ['-map', '[vout]']
-    if (audioFilter) maps.push('-map', '[aout]')
+    const filterComplex = `${vf};${af}`
 
-    const cmd = [
+    const cmd: string[] = [
       ...inputs,
-      '-t', String(duration),
+      '-t', String(clipLen),
       '-filter_complex', filterComplex,
       ...maps,
       '-c:v', 'libx264',
       '-preset', qualityCfg.preset,
       '-crf', String(qualityCfg.crf),
       '-pix_fmt', 'yuv420p',
+      '-c:a', 'aac',
+      '-b:a', '128k',
+      '-movflags', '+faststart',
+      '-y',
+      filename,
     ]
-    if (audioFilter) cmd.push('-c:a', 'aac', '-b:a', '192k')
-    cmd.push('-movflags', '+faststart', filename)
 
     await ffmpeg.exec(cmd)
+    ffmpeg.off('progress', progressHandler)
 
     const data = await ffmpeg.readFile(filename)
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -191,7 +233,7 @@ export default function ExportModal({ onClose }: Props) {
 
     try {
       const { FFmpeg } = await import('@ffmpeg/ffmpeg')
-      const { fetchFile, toBlobURL } = await import('@ffmpeg/util')
+      const { toBlobURL } = await import('@ffmpeg/util')
 
       const ffmpeg = new FFmpeg()
       const baseURL = 'https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd'
@@ -214,7 +256,7 @@ export default function ExportModal({ onClose }: Props) {
           const filename = `out_${i}.mp4`
 
           const blob = await renderOne(
-            ffmpeg, fetchFile, found.banner, found.video, found.projectDuration, filename,
+            ffmpeg, found.banner, found.video, found.projectDuration, filename,
             (p) => {
               if (p <= 0) return
               const elapsed = (performance.now() - startTs) / 1000
@@ -225,8 +267,6 @@ export default function ExportModal({ onClose }: Props) {
           )
 
           const elapsed = (performance.now() - startTs) / 1000
-
-          // 실측 계수 갱신 (MP당 초당)
           const mp = (w * h) / 1_000_000
           const newFactor = elapsed / (mp * found.projectDuration)
           measuredFactorRef.current = measuredFactorRef.current === null
@@ -237,22 +277,28 @@ export default function ExportModal({ onClose }: Props) {
           const fileW = setBannerAsset?.width  ?? resW
           const fileH = setBannerAsset?.height ?? resH
 
+          // 다운로드 — revokeObjectURL은 click 후 충분한 시간 뒤에
           const url = URL.createObjectURL(blob)
           const a = downloadLinkRef.current!
           a.href = url
           a.download = `veeding_${job.label.replace(/[^a-zA-Z0-9가-힣]/g, '_')}_${fileW}x${fileH}_${Date.now()}.mp4`
           a.click()
-          URL.revokeObjectURL(url)
+          setTimeout(() => URL.revokeObjectURL(url), 5000)
 
           updateJob(i, jobList, { status: 'done', progress: 100, remainSec: null, totalSec: Math.round(elapsed) })
+
+          // 다음 세트 전에 이전 출력 파일 삭제
+          try { await ffmpeg.deleteFile(filename) } catch { /* ignore */ }
         } catch (err) {
-          updateJob(i, jobList, { status: 'error', error: err instanceof Error ? err.message : 'Error' })
+          const msg = err instanceof Error ? err.message : String(err)
+          console.error(`[export] set ${i} error:`, msg)
+          updateJob(i, jobList, { status: 'error', error: msg })
         }
       }
 
       playDing()
     } catch (err) {
-      console.error(err)
+      console.error('[export] fatal:', err)
     }
 
     setIsRunning(false)
