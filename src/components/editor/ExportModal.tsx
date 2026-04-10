@@ -28,10 +28,18 @@ function fmtRemain(s: number): string {
   return sec > 0 ? `${m}분 ${sec}초 남음` : `${m}분 남음`
 }
 
-/** blob: / http: 모두 처리하는 fetch → Uint8Array */
+/** blob: / http: / data: 모두 처리하는 → Uint8Array */
 async function fetchToUint8Array(url: string): Promise<Uint8Array> {
+  // data:... base64 URL — fetch가 실패하는 브라우저 대비
+  if (url.startsWith('data:')) {
+    const base64 = url.split(',')[1]
+    const binary = atob(base64)
+    const bytes = new Uint8Array(binary.length)
+    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i)
+    return bytes
+  }
   const res = await fetch(url)
-  if (!res.ok) throw new Error(`fetch failed: ${url}`)
+  if (!res.ok) throw new Error(`fetch failed (${res.status}): ${url.slice(0, 80)}`)
   return new Uint8Array(await res.arrayBuffer())
 }
 
@@ -88,10 +96,13 @@ export default function ExportModal({ onClose }: Props) {
     ffmpeg.on('progress', progressHandler)
 
     const videoAsset = videoAssets.find((v) => v.id === video!.assetId)!
+    console.log('[export] videoAsset url:', videoAsset.url.slice(0, 60), 'w:', videoAsset.width, 'h:', videoAsset.height)
 
-    // blob: URL도 fetch로 처리
+    console.log('[export] fetching video...')
     const videoData = await fetchToUint8Array(videoAsset.url)
+    console.log('[export] video bytes:', videoData.byteLength)
     await ffmpeg.writeFile('input.mp4', videoData)
+    console.log('[export] wrote input.mp4')
 
     const speed      = video!.speed
     const inPoint    = video!.inPoint
@@ -129,16 +140,22 @@ export default function ExportModal({ onClose }: Props) {
     let musicIdx  = -1
 
     if (bannerAsset) {
+      console.log('[export] fetching banner dataUrl length:', bannerAsset.dataUrl.length)
       const bannerData = await fetchToUint8Array(bannerAsset.dataUrl)
+      console.log('[export] banner bytes:', bannerData.byteLength)
       await ffmpeg.writeFile('banner.png', bannerData)
+      console.log('[export] wrote banner.png')
       inputs.push('-i', 'banner.png')
       bannerIdx = 1
     }
 
     const musicAsset = musicTrack ? musicAssets.find((m) => m.id === musicTrack.assetId) : null
     if (musicAsset) {
+      console.log('[export] fetching music:', musicAsset.url.slice(0, 60))
       const musicData = await fetchToUint8Array(musicAsset.url)
+      console.log('[export] music bytes:', musicData.byteLength)
       await ffmpeg.writeFile('bgm.mp3', musicData)
+      console.log('[export] wrote bgm.mp3')
       inputs.push('-stream_loop', '-1', '-i', 'bgm.mp3')
       musicIdx = bannerIdx >= 0 ? 2 : 1
     }
@@ -241,6 +258,7 @@ export default function ExportModal({ onClose }: Props) {
       const { toBlobURL } = await import('@ffmpeg/util')
 
       const ffmpeg = new FFmpeg()
+      ffmpeg.on('log', ({ message }) => console.log('[ffmpeg]', message))
       const baseURL = 'https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd'
       await ffmpeg.load({
         coreURL: await toBlobURL(`${baseURL}/ffmpeg-core.js`, 'text/javascript'),
