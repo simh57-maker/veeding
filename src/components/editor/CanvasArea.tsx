@@ -471,11 +471,19 @@ export default function CanvasArea() {
     dragRef.current = null
   }
 
-  function handleWheel(e: React.WheelEvent<HTMLDivElement>) {
-    e.preventDefault()
-    const delta = e.deltaY > 0 ? 0.97 : 1.03
-    setZoomFactor((prev) => Math.min(5, Math.max(0.1, prev * delta)))
-  }
+  // React의 onWheel은 passive:true라 preventDefault가 안 먹힘
+  // → useEffect로 네이티브 등록
+  useEffect(() => {
+    const el = containerRef.current
+    if (!el) return
+    const onWheel = (e: WheelEvent) => {
+      e.preventDefault()
+      const delta = e.deltaY > 0 ? 0.97 : 1.03
+      setZoomFactor((prev) => Math.min(5, Math.max(0.1, prev * delta)))
+    }
+    el.addEventListener('wheel', onWheel, { passive: false })
+    return () => el.removeEventListener('wheel', onWheel)
+  }, [])
 
   // fit 배율 계산 (줌 퍼센트 표시용)
   const fitScale = (() => {
@@ -492,7 +500,6 @@ export default function CanvasArea() {
       ref={containerRef}
       className="absolute inset-0 flex items-center justify-center overflow-hidden"
       style={{ background: 'radial-gradient(circle at center, #252525 0%, #1A1A1A 100%)' }}
-      onWheel={handleWheel}
     >
       <div className="hidden">
         {bannerAssets.map((a) => (
