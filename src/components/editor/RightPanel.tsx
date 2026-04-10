@@ -158,28 +158,24 @@ export default function RightPanel() {
 
           {/* Background Music */}
           <Section title="BGM" icon={<Music className="w-3.5 h-3.5" />}>
-            <div className="space-y-1">
-              {musicAssets.map((asset) => {
-                const selected = musicTrack?.assetId === asset.id
-                return (
-                  <button
-                    key={asset.id}
-                    onClick={() => selectMusic(asset)}
-                    className={`w-full flex items-center gap-2 px-2.5 py-2 rounded-lg border text-left transition-all ${
-                      selected
-                        ? 'border-[#F59E0B] bg-[#F59E0B]/10'
-                        : 'border-[#3a3a3a] hover:border-[#555]'
-                    }`}
-                  >
-                    <Music className={`w-3 h-3 shrink-0 ${selected ? 'text-[#F59E0B]' : 'text-[#555]'}`} />
-                    <span className={`text-[10px] truncate flex-1 ${selected ? 'text-[#F59E0B]' : 'text-[#888]'}`}>
-                      {asset.name}
-                    </span>
-                    <span className="text-[9px] text-[#555] shrink-0">{asset.duration.toFixed(0)}s</span>
-                  </button>
-                )
-              })}
-            </div>
+            <select
+              value={musicTrack?.assetId ?? ''}
+              onChange={(e) => {
+                const id = e.target.value
+                if (!id) { setMusicTrack(null); return }
+                const asset = musicAssets.find((m) => m.id === id)
+                if (asset) selectMusic(asset)
+              }}
+              disabled={!activeSetId}
+              className="w-full px-2.5 py-2 rounded-lg border border-[#3a3a3a] bg-[#1E1E1E] text-[11px] text-[#E0E0E0] cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed focus:outline-none focus:border-[#F59E0B] transition-colors"
+            >
+              <option value="">-- BGM 없음 --</option>
+              {musicAssets.map((asset) => (
+                <option key={asset.id} value={asset.id}>
+                  {asset.name}
+                </option>
+              ))}
+            </select>
 
             {/* 볼륨 슬라이더 */}
             {musicTrack && (
