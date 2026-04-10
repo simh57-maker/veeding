@@ -3,7 +3,6 @@
 import LeftSidebar from './LeftSidebar'
 import CanvasArea from './CanvasArea'
 import RightPanel from './RightPanel'
-import Timeline from './Timeline'
 
 interface Props {
   user: { id: string; email: string; name: string; image: string }
@@ -16,7 +15,6 @@ export default function EditorShell({ user }: Props) {
 
       <div className="flex flex-col flex-1 overflow-hidden min-w-0">
         <CanvasArea />
-        <Timeline />
       </div>
 
       <RightPanel />

@@ -199,6 +199,28 @@ export default function RightPanel() {
             )}
           </Section>
 
+          {/* Video Volume */}
+          <Section title="Video Volume" icon={<Music className="w-3.5 h-3.5" />}>
+            <div className={!activeSetId ? 'opacity-30 pointer-events-none' : ''}>
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-[10px] text-[#555]">영상 음향</span>
+                <span className="text-[10px] text-[#4d88ff] font-mono">
+                  {Math.round((musicTrack?.videoVolume ?? 1) * 100)}%
+                </span>
+              </div>
+              <input
+                type="range" min={0} max={1} step={0.01}
+                value={musicTrack?.videoVolume ?? 1}
+                onChange={(e) => updateMusicTrack({ videoVolume: parseFloat(e.target.value) })}
+                disabled={!musicTrack}
+                className="w-full accent-[#4d88ff] h-1 cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
+              />
+              {!musicTrack && activeSetId && (
+                <p className="text-[10px] text-[#444] px-1 mt-1">BGM을 선택하면 조절할 수 있습니다</p>
+              )}
+            </div>
+          </Section>
+
         </div>
 
         {/* Export 버튼 — 하단 고정 */}
