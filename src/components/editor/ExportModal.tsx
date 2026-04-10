@@ -156,22 +156,21 @@ export default function ExportModal({ onClose }: Props) {
     const silenceIdx = inputs.filter((a) => a === '-i').length
     inputs.push('-f', 'lavfi', '-i', `anullsrc=r=44100:cl=stereo:d=${clipLen}`)
 
-    // ── 비디오 필터: color+overlay 대신 pad 사용 (더 빠름) ──
-    // pad는 배경 생성+영상 배치를 1패스로 처리
+    // ── 비디오 필터 ──────────────────────────────────────
+    // color+overlay 방식: 영상이 캔버스 밖으로 나가도 안전하게 clipping
     let vf: string
-    const padX = Math.max(0, vidX)
-    const padY = Math.max(0, vidY)
-
     if (bannerIdx >= 0) {
       vf =
         `[0:v]${vSpeedFilter}scale=${safeW}:${safeH}[scaled];` +
-        `[scaled]pad=${outW}:${outH}:${padX}:${padY}:black[padded];` +
+        `color=black:size=${outW}x${outH}:rate=30[bg];` +
+        `[bg][scaled]overlay=${vidX}:${vidY}[vid];` +
         `[${bannerIdx}:v]scale=${outW}:${outH}[banner];` +
-        `[padded][banner]overlay=0:0[vout]`
+        `[vid][banner]overlay=0:0[vout]`
     } else {
       vf =
         `[0:v]${vSpeedFilter}scale=${safeW}:${safeH}[scaled];` +
-        `[scaled]pad=${outW}:${outH}:${padX}:${padY}:black[vout]`
+        `color=black:size=${outW}x${outH}:rate=30[bg];` +
+        `[bg][scaled]overlay=${vidX}:${vidY}[vout]`
     }
 
     // ── 오디오 필터 ────────────────────────────────────────
