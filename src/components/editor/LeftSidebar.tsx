@@ -1,7 +1,7 @@
 'use client'
 
 import { useRef, useState, useCallback } from 'react'
-import { ImageIcon, Film, Layers, Plus, Trash2, Check, Video, Music } from 'lucide-react'
+import { ImageIcon, Film, Layers, Plus, Trash2, Check, Video } from 'lucide-react'
 import NextImage from 'next/image'
 import { useEditorStore } from '@/store/editorStore'
 import { detectAlphaBounds } from '@/lib/alphaDetect'
@@ -16,15 +16,13 @@ export default function LeftSidebar({ user }: Props) {
   const [tab, setTab] = useState<Tab>('assets')
   const [bannerDragging, setBannerDragging] = useState(false)
   const [videoDragging, setVideoDragging] = useState(false)
-  const [musicDragging, setMusicDragging] = useState(false)
   const bannerInputRef = useRef<HTMLInputElement>(null)
   const videoInputRef = useRef<HTMLInputElement>(null)
-  const musicInputRef = useRef<HTMLInputElement>(null)
 
   const {
-    bannerAssets, videoAssets, musicAssets, musicTrack,
-    addBannerAsset, addVideoAsset, addMusicAsset,
-    setActiveBanner, setActiveVideo, setMusicTrack,
+    bannerAssets, videoAssets,
+    addBannerAsset, addVideoAsset,
+    setActiveBanner, setActiveVideo,
     activeBanner, activeVideo,
     saveSet,
     sets, activeSetId, loadSet, removeSet,
@@ -64,28 +62,6 @@ export default function LeftSidebar({ user }: Props) {
     e.preventDefault(); setVideoDragging(false)
     await processVideoFiles(Array.from(e.dataTransfer.files))
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
-
-  async function processMusicFiles(files: File[]) {
-    for (const file of files) {
-      if (!file.type.includes('audio')) continue
-      const url = URL.createObjectURL(file)
-      const duration = await getAudioDuration(url)
-      addMusicAsset({ id: crypto.randomUUID(), name: file.name, url, duration })
-    }
-  }
-
-  const onMusicDrop = useCallback(async (e: React.DragEvent) => {
-    e.preventDefault(); setMusicDragging(false)
-    await processMusicFiles(Array.from(e.dataTransfer.files))
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
-
-  function selectMusic(assetId: string) {
-    if (musicTrack?.assetId === assetId) {
-      setMusicTrack(null)
-    } else {
-      setMusicTrack({ assetId, volume: 0.8, videoVolume: 1 })
-    }
-  }
 
   function selectBanner(assetId: string) {
     setActiveBanner({ assetId, inPoint: 0, outPoint: 99999, x: 0, y: 0, scaleX: 1, scaleY: 1 })
@@ -262,60 +238,6 @@ export default function LeftSidebar({ user }: Props) {
             )}
           </div>
 
-          {/* ── 아래쪽: Music (노란 라인) ── */}
-          <div className="flex flex-col border-t border-[#333] overflow-hidden" style={{ height: 140 }}>
-            {/* 헤더 */}
-            <div className="flex items-center justify-between px-3 py-2 bg-[#F59E0B]/10 border-b border-[#F59E0B]/20 border-l-2 border-l-[#F59E0B] shrink-0">
-              <div className="flex items-center gap-1.5 text-[#F59E0B] text-[11px] font-semibold">
-                <Music className="w-3 h-3" /> Music
-              </div>
-              <button onClick={() => musicInputRef.current?.click()} className="text-[#F59E0B] hover:text-white transition-colors">
-                <Plus className="w-3.5 h-3.5" />
-              </button>
-              <input ref={musicInputRef} type="file" accept="audio/*" multiple className="hidden"
-                onChange={(e) => { processMusicFiles(Array.from(e.target.files ?? [])); e.target.value = '' }} />
-            </div>
-
-            {/* 음악 목록 + 드롭존 overlay */}
-            <div
-              className="flex-1 overflow-y-auto p-2 relative"
-              onDragOver={(e) => { e.preventDefault(); setMusicDragging(true) }}
-              onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setMusicDragging(false) }}
-              onDrop={onMusicDrop}
-            >
-              {musicDragging && (
-                <div className="absolute inset-0 z-10 border-2 border-dashed border-[#F59E0B] bg-[#F59E0B]/10 rounded-lg flex items-center justify-center pointer-events-none">
-                  <span className="text-[11px] text-[#F59E0B] font-medium">드롭하여 추가</span>
-                </div>
-              )}
-
-              <div className="space-y-1">
-                {musicAssets.map((asset) => (
-                  <button
-                    key={asset.id}
-                    onClick={() => selectMusic(asset.id)}
-                    className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-lg border-2 transition-all ${
-                      musicTrack?.assetId === asset.id
-                        ? 'border-[#F59E0B] bg-[#F59E0B]/10'
-                        : 'border-transparent hover:border-[#F59E0B]/40 hover:bg-[#1E1E1E]'
-                    }`}
-                  >
-                    <Music className="w-3 h-3 text-[#F59E0B] shrink-0" />
-                    <span className="text-[10px] text-[#E0E0E0] truncate flex-1 text-left">{asset.name}</span>
-                    <span className="text-[9px] text-[#555] shrink-0">{asset.duration.toFixed(1)}s</span>
-                  </button>
-                ))}
-                {musicAssets.length === 0 && (
-                  <div
-                    onClick={() => musicInputRef.current?.click()}
-                    className="flex flex-col items-center justify-center h-full min-h-[60px] cursor-pointer text-[#444] hover:text-[#555] transition-colors"
-                  >
-                    <span className="text-[10px]">드래그 또는 클릭</span>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
         </div>
       )}
 
@@ -434,11 +356,3 @@ function getVideoThumbnail(url: string): Promise<string> {
   })
 }
 
-function getAudioDuration(url: string): Promise<number> {
-  return new Promise((resolve) => {
-    const a = new Audio()
-    a.src = url
-    a.onloadedmetadata = () => resolve(a.duration)
-    a.onerror = () => resolve(0)
-  })
-}
