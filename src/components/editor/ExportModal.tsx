@@ -85,15 +85,7 @@ export default function ExportModal({ onClose }: Props) {
     banner: typeof activeBanner,
     video: typeof activeVideo,
     filename: string,
-    onProgress: (p: number) => void,
   ): Promise<Blob> {
-
-    // progress 리스너 — 매 세트마다 새로 등록하기 위해 off 후 on
-    const progressHandler = ({ progress: p }: { progress: number }) => {
-      onProgress(Math.min(99, Math.round(p * 100)))
-    }
-    ffmpeg.off('progress', progressHandler)
-    ffmpeg.on('progress', progressHandler)
 
     const videoAsset = videoAssets.find((v) => v.id === video!.assetId)!
     console.log('[export] videoAsset url:', videoAsset.url.slice(0, 60), 'w:', videoAsset.width, 'h:', videoAsset.height)
@@ -219,7 +211,6 @@ export default function ExportModal({ onClose }: Props) {
 
     console.log('[export] cmd:', cmd.join(' '))
     await ffmpeg.exec(cmd)
-    ffmpeg.off('progress', progressHandler)
 
     const data = await ffmpeg.readFile(filename)
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -271,16 +262,21 @@ export default function ExportModal({ onClose }: Props) {
 
           const filename = `out_${i}.mp4`
 
-          const blob = await renderOne(
-            ffmpeg, found.banner, found.video, filename,
-            (p) => {
-              if (p <= 0) return
-              const elapsed = (performance.now() - startTs) / 1000
-              const total = elapsed / (p / 100)
-              const remain = Math.max(0, total - elapsed)
-              updateJob(i, jobList, { progress: p, remainSec: remain })
-            },
-          )
+          // 예상 소요 시간: 이전 세트 실측값 or 영상 길이 × 경험적 배수(10)
+          const estimatedSec = measuredFactorRef.current !== null
+            ? measuredFactorRef.current * (w * h / 1_000_000) * found.projectDuration
+            : found.projectDuration * 10
+
+          // 시간 기반 폴링 — FFmpeg progress 이벤트 대신
+          const pollInterval = setInterval(() => {
+            const elapsed = (performance.now() - startTs) / 1000
+            const p = Math.min(95, Math.round((elapsed / estimatedSec) * 100))
+            const remain = Math.max(0, estimatedSec - elapsed)
+            updateJob(i, jobList, { progress: p, remainSec: remain })
+          }, 500)
+
+          const blob = await renderOne(ffmpeg, found.banner, found.video, filename)
+          clearInterval(pollInterval)
 
           const elapsed = (performance.now() - startTs) / 1000
           const mp = (w * h) / 1_000_000
