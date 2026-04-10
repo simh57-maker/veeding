@@ -325,36 +325,38 @@ export default function ExportModal({ onClose }: Props) {
   const allDone = jobs.length > 0 && jobs.every((j) => j.status === 'done' || j.status === 'error')
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-      <div className="bg-[#2C2C2C] border border-[#444] rounded-2xl w-full max-w-lg p-6 shadow-2xl">
-        <div className="flex items-center justify-between mb-5">
-          <h2 className="text-white font-semibold text-lg">Export Video</h2>
-          <button onClick={onClose} className="text-[#888] hover:text-[#E0E0E0] transition-colors">
-            <X className="w-5 h-5" />
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-md">
+      <div className="bg-[#16191D]/95 backdrop-blur-xl border border-white/[0.06] rounded-2xl w-full max-w-md p-6 shadow-2xl">
+
+        {/* 헤더 */}
+        <div className="flex items-center justify-between mb-6">
+          <span className="text-[15px] font-semibold text-white/90 tracking-tight">Export Video</span>
+          <button onClick={onClose} className="w-7 h-7 rounded-lg bg-white/[0.06] hover:bg-white/[0.10] flex items-center justify-center text-white/40 hover:text-white/70 transition-all">
+            <X className="w-3.5 h-3.5" />
           </button>
         </div>
 
         {/* 세트 선택 */}
         <div className="mb-4">
-          <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center justify-between mb-2.5">
             <div className="flex items-center gap-2">
-              <span className="text-xs text-[#888] font-medium">출력할 세트 선택</span>
-              <span className="bg-[#0D99FF]/20 text-[#0D99FF] text-[10px] font-semibold px-1.5 py-0.5 rounded-full">
-                {sets.length}개
+              <span className="text-[11px] font-semibold text-white/40 uppercase tracking-widest">세트 선택</span>
+              <span className="bg-[#3B82F6]/20 text-[#3B82F6] text-[10px] font-semibold px-1.5 py-0.5 rounded-full">
+                {sets.length}
               </span>
             </div>
-            <div className="flex gap-2">
-              <button onClick={selectAll}   className="text-[10px] text-[#0D99FF] hover:underline">전체 선택</button>
-              <button onClick={deselectAll} className="text-[10px] text-[#666]    hover:underline">전체 해제</button>
+            <div className="flex gap-3">
+              <button onClick={selectAll}   className="text-[10px] text-[#3B82F6] hover:text-[#60A5FA] transition-colors">전체 선택</button>
+              <button onClick={deselectAll} className="text-[10px] text-white/25 hover:text-white/50 transition-colors">전체 해제</button>
             </div>
           </div>
 
           {sets.length === 0 ? (
-            <div className="text-[11px] text-[#555] text-center py-4 border border-[#333] rounded-lg">
+            <div className="text-[11px] text-white/25 text-center py-5 rounded-xl bg-[#1E2128]">
               등록된 세트가 없습니다
             </div>
           ) : (
-            <div className="space-y-1 max-h-44 overflow-y-auto">
+            <div className="space-y-1.5 max-h-44 overflow-y-auto">
               {sets.map((s) => {
                 const { w, h } = getSetDimensions(s)
                 return (
@@ -374,47 +376,46 @@ export default function ExportModal({ onClose }: Props) {
 
         {/* 진행 상황 */}
         {jobs.length > 0 && (
-          <div className="mb-4 space-y-2 max-h-48 overflow-y-auto">
+          <div className="mb-4 space-y-1.5 max-h-48 overflow-y-auto">
             {jobs.map((job, i) => (
-              <div key={i} className="bg-[#1E1E1E] rounded-lg p-2.5">
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-xs text-[#E0E0E0] truncate flex-1 mr-2">{job.label}</span>
+              <div key={i} className="bg-[#1E2128] rounded-xl px-4 py-3">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-[12px] text-white/70 truncate flex-1 mr-2 font-medium">{job.label}</span>
                   <div className="shrink-0 flex items-center gap-1.5">
                     {job.status === 'done' && (
                       <>
-                        <span className="text-[10px] text-[#4dbb88]">{job.totalSec}초 소요</span>
-                        <CheckCircle className="w-3.5 h-3.5 text-[#4dbb88]" />
+                        <span className="text-[10px] text-emerald-400/80 font-mono">{job.totalSec}s</span>
+                        <CheckCircle className="w-3.5 h-3.5 text-emerald-400" />
                       </>
                     )}
                     {job.status === 'processing' && (
                       <>
                         {job.remainSec !== null && (
-                          <span className="text-[10px] text-[#0D99FF] font-mono">
+                          <span className="text-[10px] text-[#3B82F6] font-mono">
                             {fmtRemain(job.remainSec)}
                           </span>
                         )}
-                        <Loader2 className="w-3.5 h-3.5 text-[#0D99FF] animate-spin" />
+                        <Loader2 className="w-3.5 h-3.5 text-[#3B82F6] animate-spin" />
                       </>
                     )}
                     {job.status === 'error' && (
-                      <span className="text-[10px] text-red-400">오류</span>
+                      <span className="text-[10px] text-red-400/80">오류</span>
                     )}
                   </div>
                 </div>
 
-                {job.status === 'processing' && (
-                  <div className="h-1 bg-[#333] rounded-full overflow-hidden">
+                <div className="h-1 rounded-full overflow-hidden bg-white/[0.06]">
+                  {job.status === 'processing' && (
                     <div
-                      className="h-full bg-[#0D99FF] transition-all duration-300"
+                      className="h-full bg-[#3B82F6] rounded-full transition-all duration-500"
                       style={{ width: `${job.progress}%` }}
                     />
-                  </div>
-                )}
-                {job.status === 'idle' && (
-                  <div className="h-1 bg-[#2a2a2a] rounded-full" />
-                )}
+                  )}
+                  {job.status === 'done' && <div className="h-full bg-emerald-400 rounded-full w-full" />}
+                  {job.status === 'error' && <div className="h-full bg-red-400/60 rounded-full w-full" />}
+                </div>
                 {job.status === 'error' && (
-                  <div className="text-[10px] text-red-400 mt-0.5">{job.error}</div>
+                  <div className="text-[10px] text-red-400/70 mt-1.5">{job.error}</div>
                 )}
               </div>
             ))}
@@ -424,17 +425,17 @@ export default function ExportModal({ onClose }: Props) {
         {/* eslint-disable-next-line jsx-a11y/anchor-has-content */}
         <a ref={downloadLinkRef} className="hidden" />
 
-        <div className="flex gap-3">
+        <div className="flex gap-2.5">
           <button
             onClick={onClose}
-            className="flex-1 py-2.5 rounded-xl border border-[#444] text-[#888] hover:text-[#E0E0E0] text-sm transition-colors"
+            className="flex-1 py-2.5 rounded-xl bg-white/[0.06] hover:bg-white/[0.10] text-white/50 hover:text-white/70 text-[13px] font-medium transition-all"
           >
             닫기
           </button>
           <button
             onClick={handleExport}
             disabled={!hasSelection || isRunning || sets.length === 0}
-            className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-[#0D99FF] hover:bg-[#0b87e0] disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-medium transition-colors"
+            className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-[#3B82F6] hover:bg-[#2563EB] disabled:opacity-30 disabled:cursor-not-allowed text-white text-[13px] font-semibold transition-all"
           >
             {isRunning ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
             {isRunning
@@ -446,22 +447,22 @@ export default function ExportModal({ onClose }: Props) {
         </div>
       </div>
 
-      {/* 완료 모달 오버레이 */}
+      {/* 완료 오버레이 */}
       {allDone && (
-        <div className="absolute inset-0 flex items-center justify-center bg-black/70 backdrop-blur-sm rounded-2xl z-10">
-          <div className="bg-[#2C2C2C] border border-[#444] rounded-2xl p-8 flex flex-col items-center gap-4 shadow-2xl">
-            <div className="w-16 h-16 rounded-full bg-[#4dbb88]/20 flex items-center justify-center">
-              <CheckCircle className="w-9 h-9 text-[#4dbb88]" />
+        <div className="absolute inset-0 flex items-center justify-center bg-black/60 backdrop-blur-sm z-10">
+          <div className="bg-[#16191D]/95 backdrop-blur-xl border border-white/[0.06] rounded-2xl p-8 flex flex-col items-center gap-5 shadow-2xl">
+            <div className="w-16 h-16 rounded-2xl bg-emerald-400/10 flex items-center justify-center">
+              <CheckCircle className="w-8 h-8 text-emerald-400" />
             </div>
             <div className="text-center">
-              <div className="text-white font-semibold text-lg mb-1">출력 완료!</div>
-              <div className="text-[#888] text-sm">
+              <div className="text-white/90 font-semibold text-[15px] tracking-tight mb-1">출력 완료</div>
+              <div className="text-white/35 text-[12px]">
                 {jobs.filter((j) => j.status === 'done').length}개 영상이 다운로드되었습니다
               </div>
             </div>
             <button
               onClick={onClose}
-              className="mt-2 px-8 py-2.5 rounded-xl bg-[#0D99FF] hover:bg-[#0b87e0] text-white text-sm font-medium transition-colors"
+              className="px-8 py-2.5 rounded-xl bg-[#3B82F6] hover:bg-[#2563EB] text-white text-[13px] font-semibold transition-all"
             >
               닫기
             </button>
@@ -478,19 +479,18 @@ function SelectRow({ id, label, sub, checked, onChange }: {
   return (
     <label
       htmlFor={`sel-${id}`}
-      className={`flex items-center gap-3 px-3 py-2 rounded-lg border cursor-pointer transition-all ${
-        checked ? 'border-[#0D99FF] bg-[#0D99FF]/10' : 'border-[#333] hover:border-[#555]'
+      className={`flex items-center gap-3 px-3.5 py-2.5 rounded-xl cursor-pointer transition-all ${
+        checked ? 'bg-[#3B82F6]/15 ring-1 ring-[#3B82F6]/40' : 'bg-[#1E2128] hover:bg-[#252A33]'
       }`}
     >
-      <input
-        id={`sel-${id}`}
-        type="checkbox"
-        checked={checked}
-        onChange={onChange}
-        className="accent-[#0D99FF] w-3.5 h-3.5 shrink-0"
-      />
-      <span className="flex-1 text-xs text-[#E0E0E0] truncate">{label}</span>
-      <span className="text-[10px] text-[#555] shrink-0">{sub}</span>
+      <div className={`w-4 h-4 rounded-md border flex items-center justify-center shrink-0 transition-all ${
+        checked ? 'bg-[#3B82F6] border-[#3B82F6]' : 'border-white/20 bg-transparent'
+      }`}>
+        {checked && <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 10 8"><path d="M1 4l3 3 5-6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+      </div>
+      <input id={`sel-${id}`} type="checkbox" checked={checked} onChange={onChange} className="hidden" />
+      <span className="flex-1 text-[12px] text-white/70 truncate font-medium">{label}</span>
+      <span className="text-[10px] text-white/25 shrink-0 font-mono">{sub}</span>
     </label>
   )
 }

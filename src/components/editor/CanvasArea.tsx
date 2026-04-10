@@ -499,7 +499,7 @@ export default function CanvasArea() {
     <div
       ref={containerRef}
       className="absolute inset-0 flex items-center justify-center overflow-hidden"
-      style={{ background: 'radial-gradient(circle at center, #252525 0%, #1A1A1A 100%)' }}
+      style={{ background: '#2D2E32' }}
     >
       <div className="hidden">
         {bannerAssets.map((a) => (
