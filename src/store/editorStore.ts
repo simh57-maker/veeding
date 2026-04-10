@@ -55,6 +55,19 @@ export interface BannerClip {
   scaleY: number
 }
 
+export interface MusicAsset {
+  id: string
+  name: string
+  url: string
+  duration: number
+}
+
+export interface MusicTrack {
+  assetId: string
+  volume: number   // 0~1
+  videoVolume: number // 영상 원음 볼륨 0~1
+}
+
 // 하나의 배너 + 영상 세트
 export interface CompositionSet {
   id: string
@@ -77,6 +90,8 @@ export interface EditorState {
 
   bannerAssets: BannerAsset[]
   videoAssets: VideoAsset[]
+  musicAssets: MusicAsset[]
+  musicTrack: MusicTrack | null
 
   activeBanner: BannerClip | null
   activeVideo: VideoClip | null
@@ -97,6 +112,9 @@ export interface EditorState {
 
   addBannerAsset: (asset: BannerAsset) => void
   addVideoAsset: (asset: VideoAsset) => void
+  addMusicAsset: (asset: MusicAsset) => void
+  setMusicTrack: (track: MusicTrack | null) => void
+  updateMusicTrack: (partial: Partial<MusicTrack>) => void
 
   setActiveBanner: (clip: BannerClip | null) => void
   setActiveVideo: (clip: VideoClip | null) => void
@@ -126,6 +144,8 @@ export const useEditorStore = create<EditorState>((set, get) => ({
 
   bannerAssets: [],
   videoAssets: [],
+  musicAssets: [],
+  musicTrack: null,
   activeBanner: null,
   activeVideo: null,
   selectedLayer: null,
@@ -146,6 +166,14 @@ export const useEditorStore = create<EditorState>((set, get) => ({
 
   addVideoAsset: (asset) =>
     set((s) => ({ videoAssets: [...s.videoAssets, asset] })),
+
+  addMusicAsset: (asset) =>
+    set((s) => ({ musicAssets: [...s.musicAssets, asset] })),
+
+  setMusicTrack: (track) => set({ musicTrack: track }),
+
+  updateMusicTrack: (partial) =>
+    set((s) => s.musicTrack ? { musicTrack: { ...s.musicTrack, ...partial } } : {}),
 
   setActiveBanner: (clip) => {
     if (!clip) { set({ activeBanner: null }); return }

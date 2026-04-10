@@ -47,10 +47,13 @@ export default function CanvasArea() {
   const {
     activeBanner, activeVideo,
     bannerAssets, videoAssets,
+    musicTrack, musicAssets,
     currentTime, isPlaying,
     setCurrentTime, setIsPlaying, setSelectedLayer, updateVideoClip,
     pushHistory, undo, redo,
   } = useEditorStore()
+
+  const musicAudioRef = useRef<HTMLAudioElement | null>(null)
 
   const bannerAsset = activeBanner ? bannerAssets.find((b) => b.id === activeBanner.assetId) : null
   const videoAsset  = activeVideo  ? videoAssets.find((v)  => v.id === activeVideo.assetId)  : null
@@ -186,10 +189,40 @@ export default function CanvasArea() {
     }
   }, [isPlaying, activeVideo, activeBanner, bannerAsset, videoAsset, canvasW, canvasH, getVideoBox, getHandles])
 
+  // 음악 오디오 동기화
+  useEffect(() => {
+    const musicAsset = musicTrack ? musicAssets.find((m) => m.id === musicTrack.assetId) : null
+    if (!musicAudioRef.current) {
+      musicAudioRef.current = new Audio()
+      musicAudioRef.current.loop = true
+    }
+    const audio = musicAudioRef.current
+    if (musicAsset) {
+      if (audio.src !== musicAsset.url) audio.src = musicAsset.url
+      audio.volume = musicTrack?.volume ?? 1
+    }
+    if (isPlaying && musicAsset) {
+      audio.play().catch(() => {})
+    } else {
+      audio.pause()
+    }
+    return () => { audio.pause() }
+  }, [isPlaying, musicTrack, musicAssets])
+
+  // 비디오 볼륨 동기화
+  useEffect(() => {
+    const video = videoRef.current
+    if (!video) return
+    video.volume = musicTrack?.videoVolume ?? 1
+  }, [musicTrack?.videoVolume])
+
   // 애니메이션 루프
   useEffect(() => {
     const video = videoRef.current
     if (!video || !activeVideo || !videoAsset) return
+
+    // 비디오 볼륨 설정
+    video.volume = musicTrack?.videoVolume ?? 1
 
     // src가 바뀌면 로드 후 seeked 이벤트에서 그림
     if (video.src !== videoAsset.url) {
@@ -222,7 +255,7 @@ export default function CanvasArea() {
     }
 
     return () => cancelAnimationFrame(animFrameRef.current)
-  }, [isPlaying, activeVideo, videoAsset, currentTime, drawFrame, setCurrentTime])
+  }, [isPlaying, activeVideo, videoAsset, currentTime, drawFrame, setCurrentTime, musicTrack?.videoVolume])
 
   useEffect(() => { drawFrame() }, [drawFrame, activeBanner, activeVideo])
 
@@ -449,7 +482,7 @@ export default function CanvasArea() {
         ))}
       </div>
 
-      <video ref={videoRef} className="hidden" playsInline muted preload="auto" />
+      <video ref={videoRef} className="hidden" playsInline preload="auto" />
 
       <div
         style={{

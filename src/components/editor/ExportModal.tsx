@@ -29,7 +29,7 @@ function fmtRemain(s: number): string {
 }
 
 export default function ExportModal({ onClose }: Props) {
-  const { activeVideo, activeBanner, videoAssets, bannerAssets, quality, sets } = useEditorStore()
+  const { activeVideo, activeBanner, videoAssets, bannerAssets, musicAssets, musicTrack, quality, sets } = useEditorStore()
 
   const activeBannerAsset = activeBanner ? bannerAssets.find((b) => b.id === activeBanner.assetId) : null
   const resW = activeBannerAsset?.width  ?? 1920
@@ -83,6 +83,7 @@ export default function ExportModal({ onClose }: Props) {
 
     const inPoint = video!.inPoint
     const speedFilter = video!.speed !== 1 ? `setpts=${(1 / video!.speed).toFixed(4)}*PTS,` : ''
+    const audioSpeedFilter = video!.speed !== 1 ? `atempo=${video!.speed.toFixed(4)},` : ''
 
     const bannerAsset = banner ? bannerAssets.find((b) => b.id === banner.assetId) : null
     const outW = bannerAsset?.width  ?? resW
@@ -93,28 +94,62 @@ export default function ExportModal({ onClose }: Props) {
     const vidX = Math.round(video!.x - vidW / 2)
     const vidY = Math.round(video!.y - vidH / 2)
 
-    let filterComplex =
-      `[0:v]${speedFilter}scale=${vidW}:${vidH}[scaled];` +
-      `color=black:size=${outW}x${outH}:rate=30[bg];` +
-      `[bg][scaled]overlay=${vidX}:${vidY}[vid]`
+    const musicAsset = musicTrack ? musicAssets.find((m) => m.id === musicTrack.assetId) : null
+    const videoVol = musicTrack?.videoVolume ?? 1
+    const musicVol = musicTrack?.volume ?? 0
+
+    // 입력 파일 순서: [0]=input.mp4, [1]=banner.png(있으면), [2]=music(있으면)
     const inputs = ['-ss', String(inPoint), '-i', 'input.mp4']
-    const maps = ['-map', '[vid]']
+    let bannerIdx = -1
+    let musicIdx = -1
 
     if (bannerAsset) {
       const bannerData = await fetchFile(bannerAsset.dataUrl)
       await ffmpeg.writeFile('banner.png', bannerData)
-      filterComplex =
+      inputs.push('-i', 'banner.png')
+      bannerIdx = 1
+    }
+
+    if (musicAsset) {
+      const musicData = await fetchFile(musicAsset.url)
+      await ffmpeg.writeFile('music_input', musicData)
+      inputs.push('-stream_loop', '-1', '-i', 'music_input')
+      musicIdx = bannerIdx >= 0 ? 2 : 1
+    }
+
+    // 비디오 필터
+    let videoFilter = ''
+    if (bannerIdx >= 0) {
+      videoFilter =
         `[0:v]${speedFilter}scale=${vidW}:${vidH}[scaled];` +
         `color=black:size=${outW}x${outH}:rate=30[bg];` +
         `[bg][scaled]overlay=${vidX}:${vidY}[vid];` +
-        `[1:v]scale=${outW}:${outH}[banner];` +
-        `[vid][banner]overlay=0:0[out]`
-      inputs.push('-i', 'banner.png')
-      maps.length = 0
-      maps.push('-map', '[out]')
+        `[${bannerIdx}:v]scale=${outW}:${outH}[banner];` +
+        `[vid][banner]overlay=0:0[vout]`
+    } else {
+      videoFilter =
+        `[0:v]${speedFilter}scale=${vidW}:${vidH}[scaled];` +
+        `color=black:size=${outW}x${outH}:rate=30[bg];` +
+        `[bg][scaled]overlay=${vidX}:${vidY}[vout]`
     }
 
-    await ffmpeg.exec([
+    // 오디오 필터
+    let audioFilter = ''
+    const hasSrcAudio = true   // 영상에 오디오 트랙이 없어도 anullsrc로 처리
+    if (musicIdx >= 0) {
+      audioFilter =
+        `[0:a]${audioSpeedFilter}volume=${videoVol.toFixed(3)}[va];` +
+        `[${musicIdx}:a]volume=${musicVol.toFixed(3)}[ma];` +
+        `[va][ma]amix=inputs=2:duration=first[aout]`
+    } else if (hasSrcAudio) {
+      audioFilter = `[0:a]${audioSpeedFilter}volume=${videoVol.toFixed(3)}[aout]`
+    }
+
+    const filterComplex = audioFilter ? `${videoFilter};${audioFilter}` : videoFilter
+    const maps = ['-map', '[vout]']
+    if (audioFilter) maps.push('-map', '[aout]')
+
+    const cmd = [
       ...inputs,
       '-t', String(duration),
       '-filter_complex', filterComplex,
@@ -123,9 +158,11 @@ export default function ExportModal({ onClose }: Props) {
       '-preset', qualityCfg.preset,
       '-crf', String(qualityCfg.crf),
       '-pix_fmt', 'yuv420p',
-      '-movflags', '+faststart',
-      filename,
-    ])
+    ]
+    if (audioFilter) cmd.push('-c:a', 'aac', '-b:a', '192k')
+    cmd.push('-movflags', '+faststart', filename)
+
+    await ffmpeg.exec(cmd)
 
     const data = await ffmpeg.readFile(filename)
     // eslint-disable-next-line @typescript-eslint/no-explicit-any

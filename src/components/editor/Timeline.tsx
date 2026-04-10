@@ -1,12 +1,12 @@
 'use client'
 
 import { useRef, useCallback, useState, useEffect } from 'react'
-import { Play, Pause, SkipBack } from 'lucide-react'
+import { Play, Pause, SkipBack, Volume2, VolumeX } from 'lucide-react'
 import { useEditorStore } from '@/store/editorStore'
 
 const TRACK_HEIGHT = 28
 const HEADER_HEIGHT = 24
-const LABEL_W = 72
+const LABEL_W = 88
 
 export default function Timeline() {
   const {
@@ -14,7 +14,8 @@ export default function Timeline() {
     isPlaying, setIsPlaying,
     activeBanner, activeVideo,
     bannerAssets, videoAssets,
-    updateVideoClip, updateBannerClip,
+    musicTrack, musicAssets,
+    updateVideoClip, updateBannerClip, updateMusicTrack,
   } = useEditorStore()
 
   const timelineRef = useRef<HTMLDivElement>(null)
@@ -36,8 +37,6 @@ export default function Timeline() {
     return () => ro.disconnect()
   }, [])
 
-  // 마지막 틱이 오른쪽 끝에 오도록 pxPerSec 계산
-  // ticks: 0, 1, 2, ..., ceil(duration) (+ 소수 끝값)
   const end = Math.ceil(projectDuration)
   const ticks: number[] = []
   for (let t = 0; t <= end; t++) ticks.push(t)
@@ -46,9 +45,8 @@ export default function Timeline() {
   }
   const lastTick = ticks[ticks.length - 1]
 
-  // trackWidth가 0이면 fallback
   const pxPerSec = trackWidth > 0 && lastTick > 0
-    ? (trackWidth - 8) / lastTick   // -8: 마지막 틱 라벨이 잘리지 않게 여유
+    ? (trackWidth - 8) / lastTick
     : 80
 
   const timeToX = (t: number) => t * pxPerSec
@@ -98,9 +96,14 @@ export default function Timeline() {
 
   const videoAsset  = activeVideo  ? videoAssets.find((v) => v.id === activeVideo.assetId)  : null
   const bannerAsset = activeBanner ? bannerAssets.find((b) => b.id === activeBanner.assetId) : null
+  const musicAsset  = musicTrack   ? musicAssets.find((m) => m.id === musicTrack.assetId)   : null
+
+  // 트랙 수에 따른 높이: header(36) + tracks(28 each) + 여유
+  const trackCount = 2 + (musicTrack ? 1 : 0)
+  const totalHeight = 36 + HEADER_HEIGHT + TRACK_HEIGHT * trackCount + 8
 
   return (
-    <div className="bg-[#1A1A1A] border-t border-[#333] flex flex-col shrink-0" style={{ height: 140 }}>
+    <div className="bg-[#1A1A1A] border-t border-[#333] flex flex-col shrink-0" style={{ height: totalHeight }}>
 
       {/* ── Transport bar ── */}
       <div className="h-9 bg-[#2C2C2C] border-b border-[#333] flex items-center gap-3 px-4 shrink-0">
@@ -128,23 +131,51 @@ export default function Timeline() {
         {/* 왼쪽 고정 레이블 열 */}
         <div className="shrink-0 flex flex-col border-r border-[#2a2a2a]" style={{ width: LABEL_W }}>
           <div style={{ height: HEADER_HEIGHT }} className="bg-[#222] border-b border-[#333]" />
-          <div
-            className="flex items-center px-3 border-b border-[#2a2a2a] bg-[#1A1A1A]"
-            style={{ height: TRACK_HEIGHT }}
-          >
-            <div className="w-2 h-2 rounded-sm bg-[#4dbb88] mr-2 shrink-0" />
+
+          {/* Banner 레이블 */}
+          <div className="flex items-center px-2 border-b border-[#2a2a2a] bg-[#1A1A1A]" style={{ height: TRACK_HEIGHT }}>
+            <div className="w-2 h-2 rounded-sm bg-[#4dbb88] mr-1.5 shrink-0" />
             <span className="text-[10px] text-[#666]">Banner</span>
           </div>
-          <div
-            className="flex items-center px-3 border-b border-[#2a2a2a] bg-[#1A1A1A]"
-            style={{ height: TRACK_HEIGHT }}
-          >
-            <div className="w-2 h-2 rounded-sm bg-[#4d88ff] mr-2 shrink-0" />
-            <span className="text-[10px] text-[#666]">Video</span>
+
+          {/* Video 레이블 + 볼륨 */}
+          <div className="flex items-center px-2 border-b border-[#2a2a2a] bg-[#1A1A1A] gap-1" style={{ height: TRACK_HEIGHT }}>
+            <div className="w-2 h-2 rounded-sm bg-[#4d88ff] mr-1 shrink-0" />
+            <span className="text-[10px] text-[#666] shrink-0">Video</span>
+            {musicTrack !== null && (
+              <button
+                onClick={() => updateMusicTrack({ videoVolume: musicTrack.videoVolume > 0 ? 0 : 1 })}
+                className="ml-auto text-[#555] hover:text-[#888] transition-colors"
+                title={`영상 음량: ${Math.round((musicTrack.videoVolume ?? 1) * 100)}%`}
+              >
+                {(musicTrack.videoVolume ?? 1) === 0
+                  ? <VolumeX className="w-3 h-3" />
+                  : <Volume2 className="w-3 h-3" />}
+              </button>
+            )}
           </div>
+
+          {/* Music 레이블 + 볼륨 슬라이더 */}
+          {musicTrack && (
+            <div className="flex items-center px-2 border-b border-[#2a2a2a] bg-[#1A1A1A] gap-1.5" style={{ height: TRACK_HEIGHT }}>
+              <div className="w-2 h-2 rounded-sm bg-[#F59E0B] mr-1 shrink-0" />
+              <span className="text-[10px] text-[#666] shrink-0">Music</span>
+              <input
+                type="range"
+                min={0} max={1} step={0.01}
+                value={musicTrack.volume}
+                onChange={(e) => updateMusicTrack({ volume: parseFloat(e.target.value) })}
+                className="flex-1 accent-[#F59E0B] h-1 cursor-pointer"
+                title={`배경음악 음량: ${Math.round(musicTrack.volume * 100)}%`}
+              />
+              <span className="text-[9px] text-[#555] shrink-0 w-6 text-right">
+                {Math.round(musicTrack.volume * 100)}
+              </span>
+            </div>
+          )}
         </div>
 
-        {/* 트랙 본체 — 스크롤 없이 꽉 채움 */}
+        {/* 트랙 본체 */}
         <div
           ref={timelineRef}
           className="flex-1 overflow-hidden relative select-none"
@@ -173,10 +204,9 @@ export default function Timeline() {
             {/* 트랙들 */}
             <div style={{ paddingTop: HEADER_HEIGHT }}>
 
-              {/* Banner 트랙 — 영상 트랙 범위에 연동 */}
+              {/* Banner 트랙 */}
               <div className="relative border-b border-[#2a2a2a]" style={{ height: TRACK_HEIGHT }}>
                 {activeBanner && bannerAsset && (() => {
-                  // 배너 표시 범위는 영상 트랙이 있으면 그 범위를 따름
                   const bIn  = activeVideo ? activeVideo.inPoint / activeVideo.speed : activeBanner.inPoint
                   const bOut = activeVideo
                     ? (activeVideo.outPoint - activeVideo.inPoint) / activeVideo.speed
@@ -213,6 +243,30 @@ export default function Timeline() {
                   </div>
                 )}
               </div>
+
+              {/* Music 트랙 */}
+              {musicTrack && musicAsset && (
+                <div className="relative border-b border-[#2a2a2a]" style={{ height: TRACK_HEIGHT }}>
+                  <div className="absolute top-1 left-0" style={{ width: timeToX(projectDuration) }}>
+                    <div
+                      className="relative flex items-center bg-[#3d2a05] border border-[#7a5a0a] rounded overflow-hidden"
+                      style={{ width: '100%', height: TRACK_HEIGHT - 8 }}
+                    >
+                      {/* 볼륨 파형 표현 (진행 바) */}
+                      <div
+                        className="absolute inset-0 bg-[#F59E0B]/20"
+                        style={{ width: `${musicTrack.volume * 100}%` }}
+                      />
+                      <span className="text-[9px] text-[#F59E0B] px-2 truncate flex-1 relative z-10">
+                        {musicAsset.name}
+                      </span>
+                      <span className="text-[9px] text-[#7a5a0a] px-2 shrink-0 relative z-10 font-mono">
+                        {Math.round(musicTrack.volume * 100)}%
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* 플레이헤드 */}
