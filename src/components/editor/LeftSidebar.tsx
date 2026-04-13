@@ -68,7 +68,6 @@ export default function LeftSidebar({ user }: Props) {
   }
 
   function selectVideo(assetId: string) {
-    if (!activeBanner) return
     const asset = videoAssets.find((v) => v.id === assetId)
     if (!asset) return
     setActiveVideo({ assetId, inPoint: 0, outPoint: asset.duration, speed: 1, x: 0, y: 0, scaleX: 1, scaleY: 1 })
@@ -221,11 +220,6 @@ export default function LeftSidebar({ user }: Props) {
               )}
             </div>
 
-            {!activeBanner && (
-              <div className="absolute inset-0 rounded-xl bg-[#202022]/80 flex items-center justify-center pointer-events-none">
-                <span className="text-[10px] text-white/20 text-center px-4">배너를 먼저 선택하세요</span>
-              </div>
-            )}
           </div>
         </div>
       )}

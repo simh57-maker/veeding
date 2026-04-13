@@ -269,14 +269,10 @@ export default function ExportModal({ onClose }: Props) {
             ? newFactor
             : (measuredFactorRef.current + newFactor) / 2
 
-          const setBannerAsset = bannerAssets.find((b) => b.id === found.banner?.assetId)
-          const fileW = setBannerAsset?.width  ?? resW
-          const fileH = setBannerAsset?.height ?? resH
-
           const url = URL.createObjectURL(blob)
           const a = downloadLinkRef.current!
           a.href = url
-          a.download = `veeding_${job.label.replace(/[^a-zA-Z0-9가-힣]/g, '_')}_${fileW}x${fileH}_${Date.now()}.mp4`
+          a.download = `${job.label}.mp4`
           a.click()
           setTimeout(() => URL.revokeObjectURL(url), 5000)
 
