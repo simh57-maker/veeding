@@ -79,7 +79,7 @@ export default function RightPanel() {
 
   return (
     <>
-      <aside className="w-[256px] h-full bg-[#161618] rounded-2xl flex flex-col shrink-0 overflow-hidden">
+      <aside className="w-[256px] h-full bg-[#202022] rounded-2xl flex flex-col shrink-0 overflow-hidden">
 
         {/* 헤더 */}
         <div className="px-5 pt-5 pb-4 shrink-0">
@@ -90,7 +90,7 @@ export default function RightPanel() {
 
           {/* Canvas Size */}
           <Section title="Canvas Size" icon={<Monitor className="w-3.5 h-3.5" />}>
-            <div className="rounded-xl bg-[#1e1e20] px-4 py-3 border border-[#252527]">
+            <div className="rounded-xl bg-[#28282a] px-4 py-3 border border-[#2f2f31]">
               {sizeLabel ? (
                 <div className="flex items-center justify-between">
                   <span className="text-[11px] text-white/25">Size</span>
@@ -112,7 +112,7 @@ export default function RightPanel() {
                   className={`flex-1 py-1.5 rounded-lg text-[11px] transition-all border ${
                     quality === q
                       ? 'border-[#b780ff]/50 bg-[#b780ff]/10 text-[#b780ff]'
-                      : 'border-[#252527] text-white/25 hover:text-white/45 hover:border-[#333335]'
+                      : 'border-[#2f2f31] text-white/25 hover:text-white/45 hover:border-[#333335]'
                   }`}
                 >
                   {q.charAt(0).toUpperCase() + q.slice(1)}
@@ -131,7 +131,7 @@ export default function RightPanel() {
                   className={`py-1.5 rounded-lg text-[11px] transition-all border ${
                     activeVideo?.speed === s
                       ? 'border-[#b780ff]/50 bg-[#b780ff]/10 text-[#b780ff]'
-                      : 'border-[#252527] text-white/25 hover:text-white/45 hover:border-[#333335]'
+                      : 'border-[#2f2f31] text-white/25 hover:text-white/45 hover:border-[#333335]'
                   }`}
                 >
                   {s}x
@@ -152,12 +152,12 @@ export default function RightPanel() {
                   if (asset) selectMusic(asset)
                 }}
                 disabled={!activeSetId}
-                className="w-full px-3 py-2.5 rounded-xl bg-[#1e1e20] text-[11px] text-white/55 border border-[#252527] outline-none cursor-pointer appearance-none"
+                className="w-full px-3 py-2.5 rounded-xl bg-[#28282a] text-[11px] text-white/55 border border-[#2f2f31] outline-none cursor-pointer appearance-none"
                 style={{ backgroundImage: 'none' }}
               >
-                <option value="" style={{ background: '#161618' }}>— BGM 없음 —</option>
+                <option value="" style={{ background: '#202022' }}>— BGM 없음 —</option>
                 {musicAssets.map((asset) => (
-                  <option key={asset.id} value={asset.id} style={{ background: '#161618' }}>
+                  <option key={asset.id} value={asset.id} style={{ background: '#202022' }}>
                     {asset.name}
                   </option>
                 ))}
@@ -196,7 +196,7 @@ export default function RightPanel() {
         <div className="px-4 pb-4 shrink-0">
           <button
             onClick={() => setShowExport(true)}
-            className="w-full flex items-center justify-center gap-2 bg-[#b780ff] hover:bg-[#c99aff] active:bg-[#a066ee] text-[#0e0e10] text-[13px] font-semibold rounded-xl transition-colors h-11 shadow-lg shadow-black/30"
+            className="w-full flex items-center justify-center gap-2 bg-[#b780ff] hover:bg-[#c99aff] active:bg-[#a066ee] text-[#181819] text-[13px] font-semibold rounded-xl transition-colors h-11 shadow-lg shadow-black/30"
           >
             <Download className="w-4 h-4" />
             Export
@@ -227,7 +227,7 @@ function VolumeSlider({ label, value, onChange }: {
   label: string; value: number; onChange: (v: number) => void
 }) {
   return (
-    <div className="rounded-xl bg-[#1e1e20] px-4 py-3 space-y-2 border border-[#252527]">
+    <div className="rounded-xl bg-[#28282a] px-4 py-3 space-y-2 border border-[#2f2f31]">
       <div className="flex items-center justify-between">
         <span className="text-[11px] text-white/30">{label}</span>
         <span className="text-[11px] font-mono text-white/40">{Math.round(value * 100)}%</span>

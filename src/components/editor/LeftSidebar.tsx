@@ -75,7 +75,7 @@ export default function LeftSidebar({ user }: Props) {
   }
 
   return (
-    <aside className="w-[256px] h-full bg-[#161618] rounded-2xl flex flex-col shrink-0 overflow-hidden">
+    <aside className="w-[256px] h-full bg-[#202022] rounded-2xl flex flex-col shrink-0 overflow-hidden">
 
       {/* 로고 + 계정 */}
       <div className="px-5 pt-5 pb-3 flex items-center justify-between shrink-0">
@@ -94,7 +94,7 @@ export default function LeftSidebar({ user }: Props) {
           {user.image ? (
             <NextImage src={user.image} alt={user.name} width={24} height={24} className="rounded-full opacity-40" />
           ) : (
-            <div className="w-6 h-6 rounded-full bg-[#222224] border border-[#2e2e30] flex items-center justify-center">
+            <div className="w-6 h-6 rounded-full bg-[#2c2c2e] border border-[#38383a] flex items-center justify-center">
               <span className="text-[10px] text-white/30">{user.name?.[0] ?? '?'}</span>
             </div>
           )}
@@ -102,14 +102,14 @@ export default function LeftSidebar({ user }: Props) {
       </div>
 
       {/* 탭 */}
-      <div className="mx-4 mb-3 rounded-xl bg-[#1e1e20] p-1 flex gap-1 shrink-0 border border-[#252527]">
+      <div className="mx-4 mb-3 rounded-xl bg-[#28282a] p-1 flex gap-1 shrink-0 border border-[#2f2f31]">
         <TabBtn active={tab === 'assets'} onClick={() => setTab('assets')}>
           <Layers className="w-3 h-3" /> Assets
         </TabBtn>
         <TabBtn active={tab === 'sets'} onClick={() => setTab('sets')}>
           <Check className="w-3 h-3" /> Sets
           {sets.length > 0 && (
-            <span className="ml-1 bg-[#b780ff] text-[#0e0e10] text-[9px] rounded-full px-1.5 py-0.5 leading-none font-semibold">
+            <span className="ml-1 bg-[#b780ff] text-[#181819] text-[9px] rounded-full px-1.5 py-0.5 leading-none font-semibold">
               {sets.length}
             </span>
           )}
@@ -121,7 +121,7 @@ export default function LeftSidebar({ user }: Props) {
         <div className="flex flex-col flex-1 overflow-hidden">
 
           {/* Banner */}
-          <div className="flex-1 flex flex-col overflow-hidden mx-4 mb-2 rounded-xl bg-[#1e1e20] border border-[#252527]">
+          <div className="flex-1 flex flex-col overflow-hidden mx-4 mb-2 rounded-xl bg-[#28282a] border border-[#2f2f31]">
             <div className="flex items-center justify-between px-3 py-2.5 shrink-0">
               <div className="flex items-center gap-2">
                 <ImageIcon className="w-3 h-3 text-white/20" />
@@ -156,7 +156,7 @@ export default function LeftSidebar({ user }: Props) {
                   >
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={asset.dataUrl} alt={asset.name} className="w-full h-14 object-contain bg-black/30" />
-                    <div className="w-full px-1.5 py-1 bg-[#161618] flex items-center justify-between">
+                    <div className="w-full px-1.5 py-1 bg-[#202022] flex items-center justify-between">
                       <span className="text-[9px] text-white/30 truncate">{asset.name}</span>
                       {asset.alphaBounds && <span className="text-[9px] text-white/25 shrink-0 ml-1">α</span>}
                     </div>
@@ -172,7 +172,7 @@ export default function LeftSidebar({ user }: Props) {
           </div>
 
           {/* Video */}
-          <div className="flex-1 flex flex-col overflow-hidden mx-4 mb-3 rounded-xl bg-[#1e1e20] border border-[#252527] relative">
+          <div className="flex-1 flex flex-col overflow-hidden mx-4 mb-3 rounded-xl bg-[#28282a] border border-[#2f2f31] relative">
             <div className="flex items-center justify-between px-3 py-2.5 shrink-0">
               <div className="flex items-center gap-2">
                 <Film className="w-3 h-3 text-white/20" />
@@ -207,7 +207,7 @@ export default function LeftSidebar({ user }: Props) {
                   >
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={asset.thumbnailUrl} alt={asset.name} className="w-full h-14 object-cover bg-black/30" />
-                    <div className="w-full px-1.5 py-1 bg-[#161618] flex items-center justify-between">
+                    <div className="w-full px-1.5 py-1 bg-[#202022] flex items-center justify-between">
                       <span className="text-[9px] text-white/30 truncate">{asset.name}</span>
                       <span className="text-[9px] text-white/25 shrink-0 ml-1">{asset.duration.toFixed(1)}s</span>
                     </div>
@@ -222,7 +222,7 @@ export default function LeftSidebar({ user }: Props) {
             </div>
 
             {!activeBanner && (
-              <div className="absolute inset-0 rounded-xl bg-[#161618]/80 flex items-center justify-center pointer-events-none">
+              <div className="absolute inset-0 rounded-xl bg-[#202022]/80 flex items-center justify-center pointer-events-none">
                 <span className="text-[10px] text-white/20 text-center px-4">배너를 먼저 선택하세요</span>
               </div>
             )}
@@ -244,8 +244,8 @@ export default function LeftSidebar({ user }: Props) {
               key={s.id}
               className={`flex items-center gap-2.5 px-3.5 py-3 rounded-xl cursor-pointer transition-all group ${
                 activeSetId === s.id
-                  ? 'bg-[#222224] ring-1 ring-[#b780ff]/30'
-                  : 'bg-[#1e1e20] hover:bg-[#222224]'
+                  ? 'bg-[#2c2c2e] ring-1 ring-[#b780ff]/30'
+                  : 'bg-[#28282a] hover:bg-[#2c2c2e]'
               }`}
               onClick={() => loadSet(s.id)}
             >
@@ -269,7 +269,7 @@ export default function LeftSidebar({ user }: Props) {
         <button
           onClick={saveSet}
           disabled={!activeBanner || !activeVideo}
-          className="w-full flex items-center justify-center gap-2 bg-[#222224] hover:bg-[#2a2a2c] disabled:opacity-15 disabled:cursor-not-allowed text-white/35 text-[12px] rounded-xl transition-colors h-11 border border-[#2e2e30]"
+          className="w-full flex items-center justify-center gap-2 bg-[#2c2c2e] hover:bg-[#343436] disabled:opacity-15 disabled:cursor-not-allowed text-white/35 text-[12px] rounded-xl transition-colors h-11 border border-[#38383a]"
         >
           <Plus className="w-3.5 h-3.5" />
           세트로 등록
@@ -284,7 +284,7 @@ function TabBtn({ active, onClick, children }: { active: boolean; onClick: () =>
     <button
       onClick={onClick}
       className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-[11px] transition-all ${
-        active ? 'bg-[#2a2a2c] text-white/70' : 'text-white/25 hover:text-white/45'
+        active ? 'bg-[#343436] text-white/70' : 'text-white/25 hover:text-white/45'
       }`}
     >
       {children}

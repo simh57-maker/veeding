@@ -308,12 +308,12 @@ export default function ExportModal({ onClose }: Props) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-      <div className="bg-[#161618] border border-[#252527] rounded-2xl w-full max-w-md p-6 shadow-2xl shadow-black/60">
+      <div className="bg-[#202022] border border-[#2f2f31] rounded-2xl w-full max-w-md p-6 shadow-2xl shadow-black/60">
 
         {/* 헤더 */}
         <div className="flex items-center justify-between mb-6">
           <span className="text-[15px] font-semibold text-white/75 tracking-tight">Export Video</span>
-          <button onClick={onClose} className="w-7 h-7 rounded-lg bg-[#222224] hover:bg-[#2a2a2c] border border-[#2e2e30] flex items-center justify-center text-white/35 hover:text-white/60 transition-all">
+          <button onClick={onClose} className="w-7 h-7 rounded-lg bg-[#2c2c2e] hover:bg-[#343436] border border-[#38383a] flex items-center justify-center text-white/35 hover:text-white/60 transition-all">
             <X className="w-3.5 h-3.5" />
           </button>
         </div>
@@ -323,7 +323,7 @@ export default function ExportModal({ onClose }: Props) {
           <div className="flex items-center justify-between mb-2.5">
             <div className="flex items-center gap-2">
               <span className="text-[11px] font-semibold text-white/30 uppercase tracking-widest">세트 선택</span>
-              <span className="bg-[#222224] text-white/40 text-[10px] font-semibold px-1.5 py-0.5 rounded-full border border-[#2e2e30]">
+              <span className="bg-[#2c2c2e] text-white/40 text-[10px] font-semibold px-1.5 py-0.5 rounded-full border border-[#38383a]">
                 {sets.length}
               </span>
             </div>
@@ -334,7 +334,7 @@ export default function ExportModal({ onClose }: Props) {
           </div>
 
           {sets.length === 0 ? (
-            <div className="text-[11px] text-white/25 text-center py-5 rounded-xl bg-[#1e1e20] border border-[#252527]">
+            <div className="text-[11px] text-white/25 text-center py-5 rounded-xl bg-[#28282a] border border-[#2f2f31]">
               등록된 세트가 없습니다
             </div>
           ) : (
@@ -360,7 +360,7 @@ export default function ExportModal({ onClose }: Props) {
         {jobs.length > 0 && (
           <div className="mb-4 space-y-1.5 max-h-48 overflow-y-auto">
             {jobs.map((job, i) => (
-              <div key={i} className="bg-[#1e1e20] border border-[#252527] rounded-xl px-4 py-3">
+              <div key={i} className="bg-[#28282a] border border-[#2f2f31] rounded-xl px-4 py-3">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-[12px] text-white/60 truncate flex-1 mr-2 font-medium">{job.label}</span>
                   <div className="shrink-0 flex items-center gap-1.5">
@@ -386,7 +386,7 @@ export default function ExportModal({ onClose }: Props) {
                   </div>
                 </div>
 
-                <div className="h-1 rounded-full overflow-hidden bg-[#2a2a2c]">
+                <div className="h-1 rounded-full overflow-hidden bg-[#343436]">
                   {job.status === 'processing' && (
                     <div
                       className="h-full bg-[#b780ff] rounded-full transition-all duration-500"
@@ -410,14 +410,14 @@ export default function ExportModal({ onClose }: Props) {
         <div className="flex gap-2.5">
           <button
             onClick={onClose}
-            className="flex-1 py-2.5 rounded-xl bg-[#222224] hover:bg-[#2a2a2c] border border-[#2e2e30] text-white/40 hover:text-white/60 text-[13px] font-medium transition-all"
+            className="flex-1 py-2.5 rounded-xl bg-[#2c2c2e] hover:bg-[#343436] border border-[#38383a] text-white/40 hover:text-white/60 text-[13px] font-medium transition-all"
           >
             닫기
           </button>
           <button
             onClick={handleExport}
             disabled={!hasSelection || isRunning || sets.length === 0}
-            className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-[#b780ff] hover:bg-[#c99aff] disabled:opacity-30 disabled:cursor-not-allowed text-[#0e0e10] text-[13px] font-semibold transition-all"
+            className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-[#b780ff] hover:bg-[#c99aff] disabled:opacity-30 disabled:cursor-not-allowed text-[#181819] text-[13px] font-semibold transition-all"
           >
             {isRunning ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
             {isRunning
@@ -432,8 +432,8 @@ export default function ExportModal({ onClose }: Props) {
       {/* 완료 오버레이 */}
       {allDone && (
         <div className="absolute inset-0 flex items-center justify-center bg-black/60 backdrop-blur-sm z-10">
-          <div className="bg-[#161618] border border-[#252527] rounded-2xl p-8 flex flex-col items-center gap-5 shadow-2xl shadow-black/60">
-            <div className="w-16 h-16 rounded-2xl bg-[#1e1e20] border border-[#252527] flex items-center justify-center">
+          <div className="bg-[#202022] border border-[#2f2f31] rounded-2xl p-8 flex flex-col items-center gap-5 shadow-2xl shadow-black/60">
+            <div className="w-16 h-16 rounded-2xl bg-[#28282a] border border-[#2f2f31] flex items-center justify-center">
               <CheckCircle className="w-8 h-8 text-emerald-400/80" />
             </div>
             <div className="text-center">
@@ -444,7 +444,7 @@ export default function ExportModal({ onClose }: Props) {
             </div>
             <button
               onClick={onClose}
-              className="px-8 py-2.5 rounded-xl bg-[#b780ff] hover:bg-[#c99aff] text-[#0e0e10] text-[13px] font-semibold transition-all"
+              className="px-8 py-2.5 rounded-xl bg-[#b780ff] hover:bg-[#c99aff] text-[#181819] text-[13px] font-semibold transition-all"
             >
               닫기
             </button>
@@ -462,13 +462,13 @@ function SelectRow({ id, label, sub, checked, onChange }: {
     <label
       htmlFor={`sel-${id}`}
       className={`flex items-center gap-3 px-3.5 py-2.5 rounded-xl cursor-pointer transition-all ${
-        checked ? 'bg-[#222224] ring-1 ring-[#b780ff]/30' : 'bg-[#1e1e20] hover:bg-[#222224]'
+        checked ? 'bg-[#2c2c2e] ring-1 ring-[#b780ff]/30' : 'bg-[#28282a] hover:bg-[#2c2c2e]'
       }`}
     >
       <div className={`w-4 h-4 rounded-md border flex items-center justify-center shrink-0 transition-all ${
         checked ? 'bg-[#b780ff] border-[#b780ff]' : 'border-[#333335] bg-transparent'
       }`}>
-        {checked && <svg className="w-2.5 h-2.5 text-[#0e0e10]" fill="none" viewBox="0 0 10 8"><path d="M1 4l3 3 5-6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+        {checked && <svg className="w-2.5 h-2.5 text-[#181819]" fill="none" viewBox="0 0 10 8"><path d="M1 4l3 3 5-6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>}
       </div>
       <input id={`sel-${id}`} type="checkbox" checked={checked} onChange={onChange} className="hidden" />
       <span className="flex-1 text-[12px] text-white/55 truncate font-medium">{label}</span>
