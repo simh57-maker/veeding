@@ -81,12 +81,7 @@ export default function RightPanel() {
     <>
       <aside className="w-[256px] h-full bg-[#202022] rounded-2xl flex flex-col shrink-0 overflow-hidden">
 
-        {/* 헤더 */}
-        <div className="px-5 pt-5 pb-4 shrink-0">
-          <span className="text-[13px] font-medium text-white/50 tracking-tight">Properties</span>
-        </div>
-
-        <div className="flex-1 overflow-y-auto px-4 pb-4 space-y-5 scrollbar-none">
+        <div className="flex-1 overflow-y-auto px-4 pt-5 pb-4 space-y-5 scrollbar-none">
 
           {/* Canvas Size */}
           <Section title="Canvas Size" icon={<Monitor className="w-3.5 h-3.5" />}>
@@ -141,7 +136,7 @@ export default function RightPanel() {
           </Section>
 
           {/* BGM */}
-          <Section title="BGM" icon={<Music className="w-3.5 h-3.5" />}>
+          <Section title="BGM" icon={<Music className="w-3.5 h-3.5" />} sub={!activeSetId ? '세트 선택 후, BGM 등록 가능' : undefined}>
             <div className={`space-y-3 ${!activeSetId ? 'opacity-20 pointer-events-none' : ''}`}>
               <select
                 value={musicTrack?.assetId ?? ''}
@@ -171,9 +166,6 @@ export default function RightPanel() {
                 />
               )}
             </div>
-            {!activeSetId && (
-              <p className="text-[10px] text-white/15 mt-2">세트를 선택하면 BGM을 등록할 수 있습니다</p>
-            )}
           </Section>
 
           {/* Video Volume */}
@@ -209,14 +201,15 @@ export default function RightPanel() {
   )
 }
 
-function Section({ title, icon, children }: {
-  title: string; icon: React.ReactNode; children: React.ReactNode
+function Section({ title, icon, sub, children }: {
+  title: string; icon: React.ReactNode; sub?: string; children: React.ReactNode
 }) {
   return (
     <div className="space-y-2">
       <div className="flex items-center gap-2">
         <span className="text-white/20">{icon}</span>
         <span className="text-[10px] font-medium text-white/20 uppercase tracking-widest">{title}</span>
+        {sub && <span className="text-[9px] text-white/15 ml-auto">{sub}</span>}
       </div>
       {children}
     </div>
