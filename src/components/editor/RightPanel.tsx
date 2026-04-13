@@ -79,40 +79,40 @@ export default function RightPanel() {
 
   return (
     <>
-      <aside className="w-[256px] h-full bg-[#16191D]/95 backdrop-blur-xl border border-white/[0.06] rounded-2xl flex flex-col shrink-0 overflow-hidden shadow-2xl">
+      <aside className="w-[256px] h-full bg-[#19141e]/90 backdrop-blur-xl border border-[#b780ff]/10 rounded-2xl flex flex-col shrink-0 overflow-hidden shadow-2xl shadow-black/40">
 
         {/* 헤더 */}
         <div className="px-5 pt-5 pb-4 shrink-0">
-          <span className="text-[13px] font-semibold text-white/90 tracking-tight">Properties</span>
+          <span className="text-[13px] font-medium text-white/70 tracking-tight">Properties</span>
         </div>
 
-        <div className="flex-1 overflow-y-auto px-4 pb-4 space-y-6 scrollbar-none">
+        <div className="flex-1 overflow-y-auto px-4 pb-4 space-y-5 scrollbar-none">
 
           {/* Canvas Size */}
           <Section title="Canvas Size" icon={<Monitor className="w-3.5 h-3.5" />}>
-            <div className="rounded-xl bg-[#1E2128] px-4 py-3">
+            <div className="rounded-xl bg-white/[0.04] px-4 py-3">
               {sizeLabel ? (
                 <div className="flex items-center justify-between">
-                  <span className="text-[11px] text-white/30">Size</span>
-                  <span className="text-[12px] text-white/80 font-medium">{sizeLabel}</span>
+                  <span className="text-[11px] text-white/25">Size</span>
+                  <span className="text-[12px] text-white/60 font-medium">{sizeLabel}</span>
                 </div>
               ) : (
-                <span className="text-[11px] text-white/25">배너를 업로드하면 설정됩니다</span>
+                <span className="text-[11px] text-white/20">배너를 업로드하면 설정됩니다</span>
               )}
             </div>
           </Section>
 
-          {/* Export Quality */}
+          {/* Export Quality — 낮은 위계: 텍스트 버튼 스타일 */}
           <Section title="Quality" icon={<Zap className="w-3.5 h-3.5" />}>
-            <div className="rounded-xl bg-[#1E2128] p-1 flex gap-1">
+            <div className="flex gap-1.5">
               {(Object.keys(QUALITY_MAP) as Quality[]).map((q) => (
                 <button
                   key={q}
                   onClick={() => setQuality(q)}
-                  className={`flex-1 py-2 rounded-lg text-[11px] font-medium transition-all ${
+                  className={`flex-1 py-1.5 rounded-lg text-[11px] transition-all border ${
                     quality === q
-                      ? 'bg-[#3B82F6] text-white shadow-sm'
-                      : 'text-white/40 hover:text-white/70'
+                      ? 'border-[#b780ff]/40 bg-[#b780ff]/10 text-[#b780ff]'
+                      : 'border-white/[0.06] text-white/25 hover:text-white/45 hover:border-white/10'
                   }`}
                 >
                   {q.charAt(0).toUpperCase() + q.slice(1)}
@@ -121,17 +121,17 @@ export default function RightPanel() {
             </div>
           </Section>
 
-          {/* Speed */}
+          {/* Speed — 낮은 위계 */}
           <Section title="Speed" icon={<Gauge className="w-3.5 h-3.5" />}>
-            <div className={`rounded-xl bg-[#1E2128] p-1 grid grid-cols-4 gap-1 ${!activeVideo ? 'opacity-25 pointer-events-none' : ''}`}>
+            <div className={`grid grid-cols-4 gap-1.5 ${!activeVideo ? 'opacity-20 pointer-events-none' : ''}`}>
               {SPEED_OPTIONS.map((s) => (
                 <button
                   key={s}
                   onClick={() => updateVideoClip({ speed: s })}
-                  className={`py-2 rounded-lg text-[11px] font-medium transition-all ${
+                  className={`py-1.5 rounded-lg text-[11px] transition-all border ${
                     activeVideo?.speed === s
-                      ? 'bg-[#3B82F6] text-white shadow-sm'
-                      : 'text-white/40 hover:text-white/70'
+                      ? 'border-[#b780ff]/40 bg-[#b780ff]/10 text-[#b780ff]'
+                      : 'border-white/[0.06] text-white/25 hover:text-white/45 hover:border-white/10'
                   }`}
                 >
                   {s}x
@@ -142,7 +142,7 @@ export default function RightPanel() {
 
           {/* BGM */}
           <Section title="BGM" icon={<Music className="w-3.5 h-3.5" />}>
-            <div className={`space-y-3 ${!activeSetId ? 'opacity-25 pointer-events-none' : ''}`}>
+            <div className={`space-y-3 ${!activeSetId ? 'opacity-20 pointer-events-none' : ''}`}>
               <select
                 value={musicTrack?.assetId ?? ''}
                 onChange={(e) => {
@@ -152,12 +152,12 @@ export default function RightPanel() {
                   if (asset) selectMusic(asset)
                 }}
                 disabled={!activeSetId}
-                className="w-full px-3 py-2.5 rounded-xl bg-[#1E2128] text-[11px] text-white/70 border-none outline-none cursor-pointer appearance-none"
+                className="w-full px-3 py-2.5 rounded-xl bg-white/[0.04] text-[11px] text-white/60 border border-white/[0.06] outline-none cursor-pointer appearance-none"
                 style={{ backgroundImage: 'none' }}
               >
-                <option value="" style={{ background: '#1E2128' }}>— BGM 없음 —</option>
+                <option value="" style={{ background: '#19141e' }}>— BGM 없음 —</option>
                 {musicAssets.map((asset) => (
-                  <option key={asset.id} value={asset.id} style={{ background: '#1E2128' }}>
+                  <option key={asset.id} value={asset.id} style={{ background: '#19141e' }}>
                     {asset.name}
                   </option>
                 ))}
@@ -167,38 +167,36 @@ export default function RightPanel() {
                 <VolumeSlider
                   label="BGM"
                   value={musicTrack.volume}
-                  color="#F59E0B"
                   onChange={(v) => updateMusicTrack({ volume: v })}
                 />
               )}
             </div>
             {!activeSetId && (
-              <p className="text-[10px] text-white/20 mt-2">세트를 선택하면 BGM을 등록할 수 있습니다</p>
+              <p className="text-[10px] text-white/15 mt-2">세트를 선택하면 BGM을 등록할 수 있습니다</p>
             )}
           </Section>
 
           {/* Video Volume */}
           <Section title="Video Volume" icon={<Volume2 className="w-3.5 h-3.5" />}>
-            <div className={!activeSetId || !musicTrack ? 'opacity-25 pointer-events-none' : ''}>
+            <div className={!activeSetId || !musicTrack ? 'opacity-20 pointer-events-none' : ''}>
               <VolumeSlider
                 label="영상 음향"
                 value={musicTrack?.videoVolume ?? 1}
-                color="#3B82F6"
                 onChange={(v) => updateMusicTrack({ videoVolume: v })}
               />
             </div>
             {activeSetId && !musicTrack && (
-              <p className="text-[10px] text-white/20 mt-2">BGM을 선택하면 조절할 수 있습니다</p>
+              <p className="text-[10px] text-white/15 mt-2">BGM을 선택하면 조절할 수 있습니다</p>
             )}
           </Section>
 
         </div>
 
-        {/* Export 버튼 */}
+        {/* Export 버튼 — 최상위 위계 */}
         <div className="px-4 pb-4 shrink-0">
           <button
             onClick={() => setShowExport(true)}
-            className="w-full flex items-center justify-center gap-2 bg-[#3B82F6] hover:bg-[#2563EB] text-white text-[13px] font-semibold rounded-xl transition-colors h-11"
+            className="w-full flex items-center justify-center gap-2 bg-[#b780ff] hover:bg-[#c99aff] active:bg-[#a066ee] text-[#19141e] text-[13px] font-semibold rounded-xl transition-colors h-11 shadow-lg shadow-[#b780ff]/20"
           >
             <Download className="w-4 h-4" />
             Export
@@ -215,31 +213,31 @@ function Section({ title, icon, children }: {
   title: string; icon: React.ReactNode; children: React.ReactNode
 }) {
   return (
-    <div className="space-y-2.5">
+    <div className="space-y-2">
       <div className="flex items-center gap-2">
-        <span className="text-white/30">{icon}</span>
-        <span className="text-[11px] font-semibold text-white/40 uppercase tracking-widest">{title}</span>
+        <span className="text-[#b780ff]/40">{icon}</span>
+        <span className="text-[10px] font-medium text-white/25 uppercase tracking-widest">{title}</span>
       </div>
       {children}
     </div>
   )
 }
 
-function VolumeSlider({ label, value, color, onChange }: {
-  label: string; value: number; color: string; onChange: (v: number) => void
+function VolumeSlider({ label, value, onChange }: {
+  label: string; value: number; onChange: (v: number) => void
 }) {
   return (
-    <div className="rounded-xl bg-[#1E2128] px-4 py-3 space-y-2">
+    <div className="rounded-xl bg-white/[0.04] px-4 py-3 space-y-2 border border-white/[0.04]">
       <div className="flex items-center justify-between">
-        <span className="text-[11px] text-white/40">{label}</span>
-        <span className="text-[11px] font-mono" style={{ color }}>{Math.round(value * 100)}%</span>
+        <span className="text-[11px] text-white/30">{label}</span>
+        <span className="text-[11px] font-mono text-[#b780ff]/70">{Math.round(value * 100)}%</span>
       </div>
       <input
         type="range" min={0} max={1} step={0.01}
         value={value}
         onChange={(e) => onChange(parseFloat(e.target.value))}
-        className="w-full h-1 cursor-pointer rounded-full appearance-none"
-        style={{ accentColor: color }}
+        className="w-full h-1 cursor-pointer rounded-full"
+        style={{ accentColor: '#b780ff' }}
       />
     </div>
   )

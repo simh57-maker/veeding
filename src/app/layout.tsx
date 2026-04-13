@@ -4,6 +4,7 @@ import './globals.css'
 export const metadata: Metadata = {
   title: 'Veeding — AI Video Seeding Editor',
   description: 'Professional AI-powered banner + seeding video compositor',
+  icons: { icon: '/asset/design/VEEDING_favicon.png' },
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
