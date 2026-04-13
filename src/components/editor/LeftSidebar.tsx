@@ -77,7 +77,7 @@ export default function LeftSidebar({ user }: Props) {
   }
 
   return (
-    <aside className="w-[256px] h-full bg-[#19141e]/90 backdrop-blur-xl border border-[#b780ff]/10 rounded-2xl flex flex-col shrink-0 overflow-hidden shadow-2xl shadow-black/40">
+    <aside className="w-[256px] h-full bg-[#171519]/90 backdrop-blur-xl border border-[#b780ff]/10 rounded-2xl flex flex-col shrink-0 overflow-hidden shadow-2xl shadow-black/40">
 
       {/* 로고 + 계정 */}
       <div className="px-5 pt-5 pb-3 flex items-center justify-between shrink-0">
@@ -221,7 +221,7 @@ export default function LeftSidebar({ user }: Props) {
             </div>
 
             {!activeBanner && (
-              <div className="absolute inset-0 rounded-xl bg-[#19141e]/70 flex items-center justify-center pointer-events-none">
+              <div className="absolute inset-0 rounded-xl bg-[#171519]/70 flex items-center justify-center pointer-events-none">
                 <span className="text-[10px] text-white/20 text-center px-4">배너를 먼저 선택하세요</span>
               </div>
             )}

@@ -322,7 +322,7 @@ export default function ExportModal({ onClose }: Props) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-md">
-      <div className="bg-[#16191D]/95 backdrop-blur-xl border border-white/[0.06] rounded-2xl w-full max-w-md p-6 shadow-2xl">
+      <div className="bg-[#15171a]/95 backdrop-blur-xl border border-white/[0.06] rounded-2xl w-full max-w-md p-6 shadow-2xl">
 
         {/* 헤더 */}
         <div className="flex items-center justify-between mb-6">
@@ -348,7 +348,7 @@ export default function ExportModal({ onClose }: Props) {
           </div>
 
           {sets.length === 0 ? (
-            <div className="text-[11px] text-white/25 text-center py-5 rounded-xl bg-[#1E2128]">
+            <div className="text-[11px] text-white/25 text-center py-5 rounded-xl bg-[#1d1e21]">
               등록된 세트가 없습니다
             </div>
           ) : (
@@ -374,7 +374,7 @@ export default function ExportModal({ onClose }: Props) {
         {jobs.length > 0 && (
           <div className="mb-4 space-y-1.5 max-h-48 overflow-y-auto">
             {jobs.map((job, i) => (
-              <div key={i} className="bg-[#1E2128] rounded-xl px-4 py-3">
+              <div key={i} className="bg-[#1d1e21] rounded-xl px-4 py-3">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-[12px] text-white/70 truncate flex-1 mr-2 font-medium">{job.label}</span>
                   <div className="shrink-0 flex items-center gap-1.5">
@@ -446,7 +446,7 @@ export default function ExportModal({ onClose }: Props) {
       {/* 완료 오버레이 */}
       {allDone && (
         <div className="absolute inset-0 flex items-center justify-center bg-black/60 backdrop-blur-sm z-10">
-          <div className="bg-[#16191D]/95 backdrop-blur-xl border border-white/[0.06] rounded-2xl p-8 flex flex-col items-center gap-5 shadow-2xl">
+          <div className="bg-[#15171a]/95 backdrop-blur-xl border border-white/[0.06] rounded-2xl p-8 flex flex-col items-center gap-5 shadow-2xl">
             <div className="w-16 h-16 rounded-2xl bg-emerald-400/10 flex items-center justify-center">
               <CheckCircle className="w-8 h-8 text-emerald-400" />
             </div>
@@ -476,7 +476,7 @@ function SelectRow({ id, label, sub, checked, onChange }: {
     <label
       htmlFor={`sel-${id}`}
       className={`flex items-center gap-3 px-3.5 py-2.5 rounded-xl cursor-pointer transition-all ${
-        checked ? 'bg-[#3B82F6]/15 ring-1 ring-[#3B82F6]/40' : 'bg-[#1E2128] hover:bg-[#252A33]'
+        checked ? 'bg-[#3B82F6]/15 ring-1 ring-[#3B82F6]/40' : 'bg-[#1d1e21] hover:bg-[#222326]'
       }`}
     >
       <div className={`w-4 h-4 rounded-md border flex items-center justify-center shrink-0 transition-all ${

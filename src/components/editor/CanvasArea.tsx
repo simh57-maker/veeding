@@ -502,8 +502,8 @@ export default function CanvasArea() {
       ref={containerRef}
       className="absolute inset-0 flex items-center justify-center overflow-hidden"
       style={{
-        background: '#1E2025',
-        backgroundImage: 'radial-gradient(circle, rgba(255,255,255,0.07) 1px, transparent 1px)',
+        background: '#1a1a1e',
+        backgroundImage: 'radial-gradient(circle, rgba(255,255,255,0.06) 1px, transparent 1px)',
         backgroundSize: '24px 24px',
       }}
     >

@@ -79,7 +79,7 @@ export default function RightPanel() {
 
   return (
     <>
-      <aside className="w-[256px] h-full bg-[#19141e]/90 backdrop-blur-xl border border-[#b780ff]/10 rounded-2xl flex flex-col shrink-0 overflow-hidden shadow-2xl shadow-black/40">
+      <aside className="w-[256px] h-full bg-[#171519]/90 backdrop-blur-xl border border-[#b780ff]/10 rounded-2xl flex flex-col shrink-0 overflow-hidden shadow-2xl shadow-black/40">
 
         {/* 헤더 */}
         <div className="px-5 pt-5 pb-4 shrink-0">
@@ -155,9 +155,9 @@ export default function RightPanel() {
                 className="w-full px-3 py-2.5 rounded-xl bg-white/[0.04] text-[11px] text-white/60 border border-white/[0.06] outline-none cursor-pointer appearance-none"
                 style={{ backgroundImage: 'none' }}
               >
-                <option value="" style={{ background: '#19141e' }}>— BGM 없음 —</option>
+                <option value="" style={{ background: '#171519' }}>— BGM 없음 —</option>
                 {musicAssets.map((asset) => (
-                  <option key={asset.id} value={asset.id} style={{ background: '#19141e' }}>
+                  <option key={asset.id} value={asset.id} style={{ background: '#171519' }}>
                     {asset.name}
                   </option>
                 ))}
