@@ -8,8 +8,29 @@ import ExportModal from './ExportModal'
 const SPEED_OPTIONS = [1.0, 1.2, 1.3, 1.5]
 
 const BUILT_IN_MUSIC = [
-  { name: 'Jarabe de Tequila - Inaban & Nabani', path: '/asset/music/Jarabe de Tequila - Inaban _ Nabani.mp3' },
-  { name: 'Jumpy Pants - Freedom Trail Studio',  path: '/asset/music/Jumpy Pants - Freedom Trail Studio.mp3' },
+  // Chill
+  { name: '[Chill] Aves - Coffee Stop',                          path: '/asset/music/Chill/Aves - Coffee Stop.mp3' },
+  { name: '[Chill] Aves - Velvet',                               path: '/asset/music/Chill/Aves - Velvet.mp3' },
+  { name: '[Chill] Eden Barel - Cutting Cookies',                path: '/asset/music/Chill/Eden Barel - Cutting Cookies.mp3' },
+  { name: '[Chill] Heron Vale - Mistletoe Glow',                 path: '/asset/music/Chill/Heron Vale - Mistletoe Glow.mp3' },
+  { name: '[Chill] Jim Swim - Tornadoes (Instrumental)',         path: '/asset/music/Chill/Jim Swim - Tornadoes - Instrumental version.mp3' },
+  { name: '[Chill] Jimit - Honey',                               path: '/asset/music/Chill/Jimit - Honey.mp3' },
+  { name: '[Chill] Magiksolo - Shoujo',                          path: '/asset/music/Chill/Magiksolo - Shoujo.mp3' },
+  { name: '[Chill] Skipp Whitman - Closing Doors (Instrumental)',path: '/asset/music/Chill/Skipp Whitman - Closing Doors - Instrumental version.mp3' },
+  { name: '[Chill] Skygaze - Kissing the Moon',                  path: '/asset/music/Chill/Skygaze - Kissing the Moon.mp3' },
+  { name: '[Chill] Ziv Moran - Dance (Short)',                   path: '/asset/music/Chill/Ziv Moran - Dance - Short version a.mp3' },
+  // Cool
+  { name: '[Cool] BalloonPlanet - Breaking Sweat (Short)',       path: '/asset/music/Cool/BalloonPlanet - Breaking Sweat - Short version.mp3' },
+  { name: '[Cool] BalloonPlanet - Cool My Bass',                 path: '/asset/music/Cool/BalloonPlanet - Cool My Bass.mp3' },
+  { name: '[Cool] Ben Fox - The Bounce (Instrumental)',          path: '/asset/music/Cool/Ben Fox - The Bounce - Instrumental version.mp3' },
+  { name: '[Cool] Captain Joz - Ima B Da Baddest (Instrumental)',path: '/asset/music/Cool/Captain Joz - Ima B Da Baddest - Instrumental - Short version.mp3' },
+  { name: '[Cool] Damon Power - All the Way',                    path: '/asset/music/Cool/Damon Power - All the Way.mp3' },
+  { name: '[Cool] Jimit - Move It',                              path: '/asset/music/Cool/Jimit - Move It.mp3' },
+  { name: '[Cool] MooveKa - Play It Cool',                       path: '/asset/music/Cool/MooveKa - Play It Cool.mp3' },
+  { name: '[Cool] Out of Flux - BAM BAM',                        path: '/asset/music/Cool/Out of Flux - BAM BAM.mp3' },
+  { name: '[Cool] Randy Sharp - Milo My',                        path: '/asset/music/Cool/Randy Sharp - Milo My.mp3' },
+  { name: '[Cool] Roie Shpigler - Milky Way (Short)',            path: '/asset/music/Cool/Roie Shpigler - Milky Way - Alternative - Short version b.mp3' },
+  { name: '[Cool] feinsmecker - Come Again',                     path: '/asset/music/Cool/feinsmecker - Come Again.mp3' },
 ]
 
 async function measureVideoRMS(videoUrl: string): Promise<number> {
