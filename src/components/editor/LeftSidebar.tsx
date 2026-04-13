@@ -75,16 +75,20 @@ export default function LeftSidebar({ user }: Props) {
   }
 
   return (
-    <aside className="w-[256px] h-full bg-[#161618] border border-[#252527] rounded-2xl flex flex-col shrink-0 overflow-hidden shadow-2xl shadow-black/60">
+    <aside className="w-[256px] h-full bg-[#161618] rounded-2xl flex flex-col shrink-0 overflow-hidden">
 
       {/* 로고 + 계정 */}
       <div className="px-5 pt-5 pb-3 flex items-center justify-between shrink-0">
         <div className="flex items-center gap-2.5">
-          <div className="w-7 h-7 rounded-lg bg-[#222224] border border-[#2e2e30] flex items-center justify-center shrink-0">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/asset/design/VEEDING_favicon.png" alt="Veeding" className="w-5 h-5 rounded-md" />
-          </div>
-          <span className="text-white/60 font-medium text-[13px] tracking-tight">Veeding</span>
+          <svg viewBox="120 455 830 170" className="h-[18px] w-auto" style={{ fill: 'rgba(255,255,255,0.55)' }} aria-label="Veeding">
+            <polygon points="295.85 583.04 295.85 551.15 358.06 551.15 358.06 525.72 295.85 525.72 295.85 496.96 362.93 496.96 367.45 471.53 268.46 471.53 268.46 608.47 369.6 608.47 365.16 583.04 295.85 583.04"/>
+            <polygon points="414.2 583.04 414.2 551.15 476.41 551.15 476.41 525.72 414.2 525.72 414.2 496.96 481.28 496.96 485.8 471.53 386.82 471.53 386.82 608.47 487.96 608.47 483.52 583.04 414.2 583.04"/>
+            <path d="M546.55,471.53h-41.17v136.94h43.12c43.43,0,70.82-26.21,70.82-69.06s-28.17-67.88-72.77-67.88ZM547.72,583.04h-14.95v-86.08h14.95c27.58,0,44.21,15.45,44.21,42.84s-16.63,43.23-44.21,43.23Z"/>
+            <rect x="637.01" y="471.53" width="27.39" height="136.94"/>
+            <polygon points="769.38 589.05 767.44 589.05 737.51 471.53 710.97 471.53 710.97 471.53 686.58 471.53 686.58 608.47 713.97 608.47 713.97 490.95 715.86 490.95 745.45 608.47 765.85 608.47 765.85 608.47 769.38 608.47 796.77 608.47 796.77 471.53 769.38 471.53 769.38 589.05"/>
+            <path d="M879.78,534.91l4.21,23.87h29.63c-4.5,18.19-16.43,27.58-34.43,27.58-24.26,0-40.49-18.19-40.49-46.36s15.65-46.36,39.71-46.36c17.02,0,29.73,8.02,34.43,23.87h28.17c-6.06-29.54-29.93-48.32-62.41-48.32-39.91,0-67.29,28.95-67.29,70.43s27.39,71.21,66.71,71.21c36.39,0,65.14-25.43,65.14-69.06v-6.85h-63.38Z"/>
+            <polygon points="197.03 589.05 195.72 589.05 167.15 476.88 136.84 471.53 171.32 608.47 192.09 608.47 200.66 608.47 221.43 608.47 255.91 471.53 225.6 476.88 197.03 589.05"/>
+          </svg>
         </div>
         <div title={user.email} className="cursor-default">
           {user.image ? (

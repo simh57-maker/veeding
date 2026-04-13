@@ -79,7 +79,7 @@ export default function RightPanel() {
 
   return (
     <>
-      <aside className="w-[256px] h-full bg-[#161618] border border-[#252527] rounded-2xl flex flex-col shrink-0 overflow-hidden shadow-2xl shadow-black/60">
+      <aside className="w-[256px] h-full bg-[#161618] rounded-2xl flex flex-col shrink-0 overflow-hidden">
 
         {/* 헤더 */}
         <div className="px-5 pt-5 pb-4 shrink-0">
