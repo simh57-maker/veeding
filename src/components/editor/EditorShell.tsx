@@ -33,13 +33,13 @@ export default function EditorShell({ user }: Props) {
       </div>
 
       {/* 단축키 패널 — 왼쪽 패널 오른쪽 하단 */}
-      <div className="absolute bottom-5 left-[276px] z-10 pointer-events-none">
-        <div className="rounded-xl px-3 py-2.5 space-y-1.5" style={{ background: 'rgba(20,20,22,0.55)' }}>
-          <p className="text-[8px] font-medium text-white/20 uppercase tracking-widest mb-2">Shortcuts</p>
+      <div className="absolute bottom-5 left-[296px] z-10 pointer-events-none">
+        <div className="rounded-xl px-4 py-3 space-y-2" style={{ background: 'rgba(20,20,22,0.55)' }}>
+          <p className="text-[9.5px] font-medium text-white/20 uppercase tracking-widest mb-2.5">Shortcuts</p>
           {SHORTCUTS.map(({ label, mac, win }) => (
-            <div key={label} className="flex items-center justify-between gap-6">
-              <span className="text-[9px] text-white/20">{label}</span>
-              <span className="text-[9px] font-mono text-white/15">{isMac ? mac : win}</span>
+            <div key={label} className="flex items-center justify-between gap-8">
+              <span className="text-[11px] text-white/20">{label}</span>
+              <span className="text-[11px] font-mono text-white/15">{isMac ? mac : win}</span>
             </div>
           ))}
         </div>
