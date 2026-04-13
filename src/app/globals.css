@@ -1,5 +1,36 @@
 @import "tailwindcss";
 
+@font-face {
+  font-family: 'SpoqaHanSansNeo';
+  src: url('/asset/font/SpoqaHanSansNeo-Thin.otf') format('opentype');
+  font-weight: 100;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'SpoqaHanSansNeo';
+  src: url('/asset/font/SpoqaHanSansNeo-Light.otf') format('opentype');
+  font-weight: 300;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'SpoqaHanSansNeo';
+  src: url('/asset/font/SpoqaHanSansNeo-Regular.otf') format('opentype');
+  font-weight: 400;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'SpoqaHanSansNeo';
+  src: url('/asset/font/SpoqaHanSansNeo-Medium.otf') format('opentype');
+  font-weight: 500;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'SpoqaHanSansNeo';
+  src: url('/asset/font/SpoqaHanSansNeo-Bold.otf') format('opentype');
+  font-weight: 700;
+  font-display: swap;
+}
+
 :root {
   --bg: #1E1E1E;
   --panel: #2C2C2C;
@@ -16,10 +47,17 @@
 body {
   background: var(--bg);
   color: var(--text);
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-family: 'SpoqaHanSansNeo', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-weight: 400;
+  letter-spacing: 0;
   margin: 0;
   overflow: hidden;
 }
+
+/* font-semibold/bold 클래스가 실제 Bold 웨이트를 쓰도록 */
+strong, b, .font-bold { font-weight: 700; }
+.font-semibold { font-weight: 500; }
+.font-medium   { font-weight: 500; }
 
 ::-webkit-scrollbar {
   width: 6px;

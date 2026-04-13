@@ -495,11 +495,17 @@ export default function CanvasArea() {
   })()
   const zoomPct = Math.round(fitScale * zoomFactor * 100)
 
+  const showCanvas = !!(activeBanner)
+
   return (
     <div
       ref={containerRef}
       className="absolute inset-0 flex items-center justify-center overflow-hidden"
-      style={{ background: '#2D2E32' }}
+      style={{
+        background: '#1E2025',
+        backgroundImage: 'radial-gradient(circle, rgba(255,255,255,0.07) 1px, transparent 1px)',
+        backgroundSize: '24px 24px',
+      }}
     >
       <div className="hidden">
         {bannerAssets.map((a) => (
@@ -510,11 +516,13 @@ export default function CanvasArea() {
 
       <video ref={videoRef} className="hidden" playsInline preload="auto" />
 
+      {/* 배너 선택 전엔 캔버스 숨김 */}
       <div
         style={{
           transform: `scale(${getScale()})`,
           transformOrigin: 'center center',
-          boxShadow: '0 8px 40px rgba(0,0,0,0.6)',
+          boxShadow: showCanvas ? '0 8px 40px rgba(0,0,0,0.6)' : 'none',
+          visibility: showCanvas ? 'visible' : 'hidden',
         }}
       >
         <canvas
@@ -529,19 +537,26 @@ export default function CanvasArea() {
         />
       </div>
 
-      {!activeBanner && !activeVideo && (
-        <div className="absolute flex flex-col items-center justify-center text-[#444] pointer-events-none gap-2">
-          <div className="text-4xl">🎬</div>
-          <p className="text-sm">배너를 업로드하고 세트를 등록하세요</p>
+      {/* 빈 상태 안내 */}
+      {!activeBanner && (
+        <div className="absolute flex flex-col items-center justify-center pointer-events-none gap-3">
+          <div className="w-12 h-12 rounded-2xl bg-white/[0.04] border border-white/[0.08] flex items-center justify-center">
+            <svg className="w-5 h-5 text-white/20" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909M3 20.25h18A.75.75 0 0021.75 19.5V6A.75.75 0 0021 5.25H3A.75.75 0 002.25 6v13.5A.75.75 0 003 20.25z" />
+            </svg>
+          </div>
+          <p className="text-[12px] text-white/20">배너를 업로드해서 시작하세요</p>
         </div>
       )}
 
-      {/* 줌 퍼센트 표시 */}
-      <div className="absolute bottom-3 left-1/2 -translate-x-1/2 pointer-events-none">
-        <div className="bg-[#1A1A1A]/80 backdrop-blur-sm border border-[#333] rounded-full px-3 py-1">
-          <span className="text-[11px] text-[#666] font-mono">{zoomPct}%</span>
+      {/* 줌 퍼센트 */}
+      {showCanvas && (
+        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 pointer-events-none">
+          <div className="bg-black/40 backdrop-blur-sm border border-white/[0.06] rounded-full px-3 py-1">
+            <span className="text-[11px] text-white/30 font-mono">{zoomPct}%</span>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   )
 }
