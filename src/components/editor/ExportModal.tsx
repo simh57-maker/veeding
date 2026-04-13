@@ -85,7 +85,7 @@ export default function ExportModal({ onClose }: Props) {
     banner: typeof activeBanner,
     video: typeof activeVideo,
     filename: string,
-    onEncodeStart: () => void,
+    onProgress: (ratio: number) => void,
   ): Promise<Blob> {
 
     const videoAsset = videoAssets.find((v) => v.id === video!.assetId)!
@@ -196,8 +196,14 @@ export default function ExportModal({ onClose }: Props) {
       filename,
     ]
 
-    onEncodeStart()
+    // progress 이벤트: time은 처리된 마이크로초, clipLen은 초 단위
+    const onProg = ({ time }: { time: number }) => {
+      const ratio = Math.min(1, time / (clipLen * 1_000_000))
+      onProgress(ratio)
+    }
+    ffmpeg.on('progress', onProg)
     await ffmpeg.exec(cmd)
+    ffmpeg.off('progress', onProg)
 
     const data = await ffmpeg.readFile(filename)
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -243,32 +249,22 @@ export default function ExportModal({ onClose }: Props) {
         const { w, h } = getSetDimensions(found)
 
         updateJob(i, jobList, { status: 'processing', remainSec: null })
+        const startTs = performance.now()
 
         try {
           if (!found.video) throw new Error('영상이 없습니다')
 
           const filename = `out_${i}.mp4`
 
-          const estimatedSec = measuredFactorRef.current !== null
-            ? measuredFactorRef.current * (w * h / 1_000_000) * found.projectDuration
-            : found.projectDuration * 10
-
-          let encodeStartTs = performance.now()
-          let pollInterval: ReturnType<typeof setInterval> | null = null
-
-          const onEncodeStart = () => {
-            encodeStartTs = performance.now()
-            pollInterval = setInterval(() => {
-              const elapsed = (performance.now() - encodeStartTs) / 1000
-              const p = Math.min(95, Math.round((elapsed / estimatedSec) * 100))
-              const remain = Math.max(0, estimatedSec - elapsed)
-              updateJob(i, jobList, { progress: p, remainSec: remain })
-            }, 500)
+          const onProgress = (ratio: number) => {
+            const elapsed = (performance.now() - startTs) / 1000
+            const p = Math.min(95, Math.round(ratio * 100))
+            // ratio 기반 남은 시간: 경과 / ratio = 전체 예상, 남은 = 전체 - 경과
+            const remain = ratio > 0.01 ? Math.max(0, (elapsed / ratio) - elapsed) : null
+            updateJob(i, jobList, { progress: p, remainSec: remain })
           }
 
-          const blob = await renderOne(ffmpeg, found.banner, found.video, filename, onEncodeStart)
-          if (pollInterval) clearInterval(pollInterval)
-          const startTs = encodeStartTs
+          const blob = await renderOne(ffmpeg, found.banner, found.video, filename, onProgress)
 
           const elapsed = (performance.now() - startTs) / 1000
           const mp = (w * h) / 1_000_000
