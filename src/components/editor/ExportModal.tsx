@@ -30,7 +30,6 @@ function fmtRemain(s: number): string {
 
 /** blob: / http: / data: 모두 처리하는 → Uint8Array */
 async function fetchToUint8Array(url: string): Promise<Uint8Array> {
-  // data:... base64 URL — fetch가 실패하는 브라우저 대비
   if (url.startsWith('data:')) {
     const base64 = url.split(',')[1]
     const binary = atob(base64)
@@ -55,7 +54,6 @@ export default function ExportModal({ onClose }: Props) {
   const [isRunning, setIsRunning] = useState(false)
   const downloadLinkRef = useRef<HTMLAnchorElement>(null)
   const measuredFactorRef = useRef<number | null>(null)
-  // 세트 간 에셋 재사용: 이미 FFmpeg FS에 쓴 파일 추적
   const writtenAssetsRef = useRef<Set<string>>(new Set())
 
   const qualityCfg = QUALITY_MAP[quality]
@@ -92,7 +90,6 @@ export default function ExportModal({ onClose }: Props) {
     const videoAsset = videoAssets.find((v) => v.id === video!.assetId)!
     const written = writtenAssetsRef.current
 
-    // ── 파일 쓰기 (같은 에셋은 세트 간 재사용) ──────────────
     const videoKey = `video:${videoAsset.id}`
     if (!written.has(videoKey)) {
       const videoData = await fetchToUint8Array(videoAsset.url)
@@ -109,8 +106,6 @@ export default function ExportModal({ onClose }: Props) {
     const outW = bannerAsset?.width  ?? resW
     const outH = bannerAsset?.height ?? resH
 
-    // 출력 해상도 기준으로 영상 스케일 계산
-    // (4K 원본을 전부 디코딩하지 않고 출력 크기에 맞게만 처리)
     const vidW = Math.round(videoAsset.width  * video!.scaleX)
     const vidH = Math.round(videoAsset.height * video!.scaleY)
     const safeW = vidW % 2 === 0 ? vidW : vidW + 1
@@ -118,10 +113,8 @@ export default function ExportModal({ onClose }: Props) {
     const vidX  = Math.round(video!.x - safeW / 2)
     const vidY  = Math.round(video!.y - safeH / 2)
 
-    // 속도 필터
     const vSpeedFilter = speed !== 1 ? `setpts=${(1 / speed).toFixed(6)}*PTS,` : ''
 
-    // ── 입력 구성 ─────────────────────────────────────────
     const inputs: string[] = [
       '-ss', String(inPoint),
       '-to', String(outPoint),
@@ -156,8 +149,6 @@ export default function ExportModal({ onClose }: Props) {
     const silenceIdx = inputs.filter((a) => a === '-i').length
     inputs.push('-f', 'lavfi', '-i', `anullsrc=r=44100:cl=stereo:d=${clipLen}`)
 
-    // ── 비디오 필터 ──────────────────────────────────────
-    // color+overlay 방식: 영상이 캔버스 밖으로 나가도 안전하게 clipping
     let vf: string
     if (bannerIdx >= 0) {
       vf =
@@ -173,7 +164,6 @@ export default function ExportModal({ onClose }: Props) {
         `[bg][scaled]overlay=${vidX}:${vidY}[vout]`
     }
 
-    // ── 오디오 필터 ────────────────────────────────────────
     const musicVol = musicTrack?.volume ?? 0
     const maps: string[] = ['-map', '[vout]']
     let af: string
@@ -194,9 +184,9 @@ export default function ExportModal({ onClose }: Props) {
       ...maps,
       '-t', String(clipLen),
       '-c:v', 'libx264',
-      '-preset', 'ultrafast',   // fast → ultrafast: 싱글스레드 WASM에서 2~3배 빠름
+      '-preset', 'ultrafast',
       '-crf', String(qualityCfg.crf),
-      '-tune', 'zerolatency',   // 추가 인코딩 최적화
+      '-tune', 'zerolatency',
       '-pix_fmt', 'yuv420p',
       '-c:a', 'aac',
       '-b:a', '128k',
@@ -217,7 +207,7 @@ export default function ExportModal({ onClose }: Props) {
     if (selectedIds.size === 0) return
     setIsRunning(true)
     measuredFactorRef.current = null
-    writtenAssetsRef.current = new Set()  // 세트 간 에셋 캐시 초기화
+    writtenAssetsRef.current = new Set()
 
     const selectedSets = Array.from(selectedIds)
       .map((id) => sets.find((s) => s.id === id))
@@ -258,12 +248,10 @@ export default function ExportModal({ onClose }: Props) {
 
           const filename = `out_${i}.mp4`
 
-          // 예상 소요 시간: 이전 세트 실측값 or 영상 길이 × 경험적 배수(10)
           const estimatedSec = measuredFactorRef.current !== null
             ? measuredFactorRef.current * (w * h / 1_000_000) * found.projectDuration
             : found.projectDuration * 10
 
-          // 시간 기반 폴링 — FFmpeg progress 이벤트 대신
           const pollInterval = setInterval(() => {
             const elapsed = (performance.now() - startTs) / 1000
             const p = Math.min(95, Math.round((elapsed / estimatedSec) * 100))
@@ -285,7 +273,6 @@ export default function ExportModal({ onClose }: Props) {
           const fileW = setBannerAsset?.width  ?? resW
           const fileH = setBannerAsset?.height ?? resH
 
-          // 다운로드 — revokeObjectURL은 click 후 충분한 시간 뒤에
           const url = URL.createObjectURL(blob)
           const a = downloadLinkRef.current!
           a.href = url
@@ -295,7 +282,6 @@ export default function ExportModal({ onClose }: Props) {
 
           updateJob(i, jobList, { status: 'done', progress: 100, remainSec: null, totalSec: Math.round(elapsed) })
 
-          // 다음 세트 전에 이전 출력 파일 삭제
           try { await ffmpeg.deleteFile(filename) } catch { /* ignore */ }
         } catch (err) {
           const msg = err instanceof Error ? err.message : String(err)
@@ -321,13 +307,13 @@ export default function ExportModal({ onClose }: Props) {
   const allDone = jobs.length > 0 && jobs.every((j) => j.status === 'done' || j.status === 'error')
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-md">
-      <div className="bg-[#15171a]/95 backdrop-blur-xl border border-white/[0.06] rounded-2xl w-full max-w-md p-6 shadow-2xl">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+      <div className="bg-[#161618] border border-[#252527] rounded-2xl w-full max-w-md p-6 shadow-2xl shadow-black/60">
 
         {/* 헤더 */}
         <div className="flex items-center justify-between mb-6">
-          <span className="text-[15px] font-semibold text-white/90 tracking-tight">Export Video</span>
-          <button onClick={onClose} className="w-7 h-7 rounded-lg bg-white/[0.06] hover:bg-white/[0.10] flex items-center justify-center text-white/40 hover:text-white/70 transition-all">
+          <span className="text-[15px] font-semibold text-white/75 tracking-tight">Export Video</span>
+          <button onClick={onClose} className="w-7 h-7 rounded-lg bg-[#222224] hover:bg-[#2a2a2c] border border-[#2e2e30] flex items-center justify-center text-white/35 hover:text-white/60 transition-all">
             <X className="w-3.5 h-3.5" />
           </button>
         </div>
@@ -336,19 +322,19 @@ export default function ExportModal({ onClose }: Props) {
         <div className="mb-4">
           <div className="flex items-center justify-between mb-2.5">
             <div className="flex items-center gap-2">
-              <span className="text-[11px] font-semibold text-white/40 uppercase tracking-widest">세트 선택</span>
-              <span className="bg-[#3B82F6]/20 text-[#3B82F6] text-[10px] font-semibold px-1.5 py-0.5 rounded-full">
+              <span className="text-[11px] font-semibold text-white/30 uppercase tracking-widest">세트 선택</span>
+              <span className="bg-[#222224] text-white/40 text-[10px] font-semibold px-1.5 py-0.5 rounded-full border border-[#2e2e30]">
                 {sets.length}
               </span>
             </div>
             <div className="flex gap-3">
-              <button onClick={selectAll}   className="text-[10px] text-[#3B82F6] hover:text-[#60A5FA] transition-colors">전체 선택</button>
-              <button onClick={deselectAll} className="text-[10px] text-white/25 hover:text-white/50 transition-colors">전체 해제</button>
+              <button onClick={selectAll}   className="text-[10px] text-white/35 hover:text-white/60 transition-colors">전체 선택</button>
+              <button onClick={deselectAll} className="text-[10px] text-white/20 hover:text-white/40 transition-colors">전체 해제</button>
             </div>
           </div>
 
           {sets.length === 0 ? (
-            <div className="text-[11px] text-white/25 text-center py-5 rounded-xl bg-[#1d1e21]">
+            <div className="text-[11px] text-white/25 text-center py-5 rounded-xl bg-[#1e1e20] border border-[#252527]">
               등록된 세트가 없습니다
             </div>
           ) : (
@@ -374,44 +360,44 @@ export default function ExportModal({ onClose }: Props) {
         {jobs.length > 0 && (
           <div className="mb-4 space-y-1.5 max-h-48 overflow-y-auto">
             {jobs.map((job, i) => (
-              <div key={i} className="bg-[#1d1e21] rounded-xl px-4 py-3">
+              <div key={i} className="bg-[#1e1e20] border border-[#252527] rounded-xl px-4 py-3">
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-[12px] text-white/70 truncate flex-1 mr-2 font-medium">{job.label}</span>
+                  <span className="text-[12px] text-white/60 truncate flex-1 mr-2 font-medium">{job.label}</span>
                   <div className="shrink-0 flex items-center gap-1.5">
                     {job.status === 'done' && (
                       <>
-                        <span className="text-[10px] text-emerald-400/80 font-mono">{job.totalSec}s</span>
-                        <CheckCircle className="w-3.5 h-3.5 text-emerald-400" />
+                        <span className="text-[10px] text-white/35 font-mono">{job.totalSec}s</span>
+                        <CheckCircle className="w-3.5 h-3.5 text-emerald-400/80" />
                       </>
                     )}
                     {job.status === 'processing' && (
                       <>
                         {job.remainSec !== null && (
-                          <span className="text-[10px] text-[#3B82F6] font-mono">
+                          <span className="text-[10px] text-white/30 font-mono">
                             {fmtRemain(job.remainSec)}
                           </span>
                         )}
-                        <Loader2 className="w-3.5 h-3.5 text-[#3B82F6] animate-spin" />
+                        <Loader2 className="w-3.5 h-3.5 text-white/40 animate-spin" />
                       </>
                     )}
                     {job.status === 'error' && (
-                      <span className="text-[10px] text-red-400/80">오류</span>
+                      <span className="text-[10px] text-red-400/70">오류</span>
                     )}
                   </div>
                 </div>
 
-                <div className="h-1 rounded-full overflow-hidden bg-white/[0.06]">
+                <div className="h-1 rounded-full overflow-hidden bg-[#2a2a2c]">
                   {job.status === 'processing' && (
                     <div
-                      className="h-full bg-[#3B82F6] rounded-full transition-all duration-500"
+                      className="h-full bg-[#b780ff] rounded-full transition-all duration-500"
                       style={{ width: `${job.progress}%` }}
                     />
                   )}
-                  {job.status === 'done' && <div className="h-full bg-emerald-400 rounded-full w-full" />}
-                  {job.status === 'error' && <div className="h-full bg-red-400/60 rounded-full w-full" />}
+                  {job.status === 'done' && <div className="h-full bg-emerald-400/70 rounded-full w-full" />}
+                  {job.status === 'error' && <div className="h-full bg-red-400/50 rounded-full w-full" />}
                 </div>
                 {job.status === 'error' && (
-                  <div className="text-[10px] text-red-400/70 mt-1.5">{job.error}</div>
+                  <div className="text-[10px] text-red-400/60 mt-1.5">{job.error}</div>
                 )}
               </div>
             ))}
@@ -424,14 +410,14 @@ export default function ExportModal({ onClose }: Props) {
         <div className="flex gap-2.5">
           <button
             onClick={onClose}
-            className="flex-1 py-2.5 rounded-xl bg-white/[0.06] hover:bg-white/[0.10] text-white/50 hover:text-white/70 text-[13px] font-medium transition-all"
+            className="flex-1 py-2.5 rounded-xl bg-[#222224] hover:bg-[#2a2a2c] border border-[#2e2e30] text-white/40 hover:text-white/60 text-[13px] font-medium transition-all"
           >
             닫기
           </button>
           <button
             onClick={handleExport}
             disabled={!hasSelection || isRunning || sets.length === 0}
-            className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-[#3B82F6] hover:bg-[#2563EB] disabled:opacity-30 disabled:cursor-not-allowed text-white text-[13px] font-semibold transition-all"
+            className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-[#b780ff] hover:bg-[#c99aff] disabled:opacity-30 disabled:cursor-not-allowed text-[#0e0e10] text-[13px] font-semibold transition-all"
           >
             {isRunning ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
             {isRunning
@@ -446,19 +432,19 @@ export default function ExportModal({ onClose }: Props) {
       {/* 완료 오버레이 */}
       {allDone && (
         <div className="absolute inset-0 flex items-center justify-center bg-black/60 backdrop-blur-sm z-10">
-          <div className="bg-[#15171a]/95 backdrop-blur-xl border border-white/[0.06] rounded-2xl p-8 flex flex-col items-center gap-5 shadow-2xl">
-            <div className="w-16 h-16 rounded-2xl bg-emerald-400/10 flex items-center justify-center">
-              <CheckCircle className="w-8 h-8 text-emerald-400" />
+          <div className="bg-[#161618] border border-[#252527] rounded-2xl p-8 flex flex-col items-center gap-5 shadow-2xl shadow-black/60">
+            <div className="w-16 h-16 rounded-2xl bg-[#1e1e20] border border-[#252527] flex items-center justify-center">
+              <CheckCircle className="w-8 h-8 text-emerald-400/80" />
             </div>
             <div className="text-center">
-              <div className="text-white/90 font-semibold text-[15px] tracking-tight mb-1">출력 완료</div>
-              <div className="text-white/35 text-[12px]">
+              <div className="text-white/75 font-semibold text-[15px] tracking-tight mb-1">출력 완료</div>
+              <div className="text-white/30 text-[12px]">
                 {jobs.filter((j) => j.status === 'done').length}개 영상이 다운로드되었습니다
               </div>
             </div>
             <button
               onClick={onClose}
-              className="px-8 py-2.5 rounded-xl bg-[#3B82F6] hover:bg-[#2563EB] text-white text-[13px] font-semibold transition-all"
+              className="px-8 py-2.5 rounded-xl bg-[#b780ff] hover:bg-[#c99aff] text-[#0e0e10] text-[13px] font-semibold transition-all"
             >
               닫기
             </button>
@@ -476,17 +462,17 @@ function SelectRow({ id, label, sub, checked, onChange }: {
     <label
       htmlFor={`sel-${id}`}
       className={`flex items-center gap-3 px-3.5 py-2.5 rounded-xl cursor-pointer transition-all ${
-        checked ? 'bg-[#3B82F6]/15 ring-1 ring-[#3B82F6]/40' : 'bg-[#1d1e21] hover:bg-[#222326]'
+        checked ? 'bg-[#222224] ring-1 ring-[#b780ff]/30' : 'bg-[#1e1e20] hover:bg-[#222224]'
       }`}
     >
       <div className={`w-4 h-4 rounded-md border flex items-center justify-center shrink-0 transition-all ${
-        checked ? 'bg-[#3B82F6] border-[#3B82F6]' : 'border-white/20 bg-transparent'
+        checked ? 'bg-[#b780ff] border-[#b780ff]' : 'border-[#333335] bg-transparent'
       }`}>
-        {checked && <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 10 8"><path d="M1 4l3 3 5-6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+        {checked && <svg className="w-2.5 h-2.5 text-[#0e0e10]" fill="none" viewBox="0 0 10 8"><path d="M1 4l3 3 5-6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>}
       </div>
       <input id={`sel-${id}`} type="checkbox" checked={checked} onChange={onChange} className="hidden" />
-      <span className="flex-1 text-[12px] text-white/70 truncate font-medium">{label}</span>
-      <span className="text-[10px] text-white/25 shrink-0 font-mono">{sub}</span>
+      <span className="flex-1 text-[12px] text-white/55 truncate font-medium">{label}</span>
+      <span className="text-[10px] text-white/20 shrink-0 font-mono">{sub}</span>
     </label>
   )
 }

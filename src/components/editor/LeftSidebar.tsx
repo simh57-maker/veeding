@@ -65,7 +65,6 @@ export default function LeftSidebar({ user }: Props) {
 
   function selectBanner(assetId: string) {
     setActiveBanner({ assetId, inPoint: 0, outPoint: 99999, x: 0, y: 0, scaleX: 1, scaleY: 1 })
-    // autoCompose는 setActiveBanner 내부에서 자동 호출됨
   }
 
   function selectVideo(assetId: string) {
@@ -73,42 +72,40 @@ export default function LeftSidebar({ user }: Props) {
     const asset = videoAssets.find((v) => v.id === assetId)
     if (!asset) return
     setActiveVideo({ assetId, inPoint: 0, outPoint: asset.duration, speed: 1, x: 0, y: 0, scaleX: 1, scaleY: 1 })
-    // autoCompose는 setActiveVideo 내부에서 자동 호출됨
   }
 
   return (
-    <aside className="w-[256px] h-full bg-[#171519]/90 backdrop-blur-xl border border-[#b780ff]/10 rounded-2xl flex flex-col shrink-0 overflow-hidden shadow-2xl shadow-black/40">
+    <aside className="w-[256px] h-full bg-[#161618] border border-[#252527] rounded-2xl flex flex-col shrink-0 overflow-hidden shadow-2xl shadow-black/60">
 
       {/* 로고 + 계정 */}
       <div className="px-5 pt-5 pb-3 flex items-center justify-between shrink-0">
         <div className="flex items-center gap-2.5">
-          {/* V 로고 아이콘 */}
-          <div className="w-7 h-7 rounded-lg bg-[#b780ff]/15 border border-[#b780ff]/20 flex items-center justify-center shrink-0">
+          <div className="w-7 h-7 rounded-lg bg-[#222224] border border-[#2e2e30] flex items-center justify-center shrink-0">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/asset/design/VEEDING_favicon.png" alt="Veeding" className="w-5 h-5 rounded-md" />
           </div>
-          <span className="text-white/80 font-medium text-[13px] tracking-tight">Veeding</span>
+          <span className="text-white/60 font-medium text-[13px] tracking-tight">Veeding</span>
         </div>
         <div title={user.email} className="cursor-default">
           {user.image ? (
-            <NextImage src={user.image} alt={user.name} width={24} height={24} className="rounded-full opacity-50" />
+            <NextImage src={user.image} alt={user.name} width={24} height={24} className="rounded-full opacity-40" />
           ) : (
-            <div className="w-6 h-6 rounded-full bg-[#b780ff]/10 border border-[#b780ff]/15 flex items-center justify-center">
-              <span className="text-[10px] text-[#b780ff]/50">{user.name?.[0] ?? '?'}</span>
+            <div className="w-6 h-6 rounded-full bg-[#222224] border border-[#2e2e30] flex items-center justify-center">
+              <span className="text-[10px] text-white/30">{user.name?.[0] ?? '?'}</span>
             </div>
           )}
         </div>
       </div>
 
       {/* 탭 */}
-      <div className="mx-4 mb-3 rounded-xl bg-white/[0.04] p-1 flex gap-1 shrink-0">
+      <div className="mx-4 mb-3 rounded-xl bg-[#1e1e20] p-1 flex gap-1 shrink-0 border border-[#252527]">
         <TabBtn active={tab === 'assets'} onClick={() => setTab('assets')}>
           <Layers className="w-3 h-3" /> Assets
         </TabBtn>
         <TabBtn active={tab === 'sets'} onClick={() => setTab('sets')}>
           <Check className="w-3 h-3" /> Sets
           {sets.length > 0 && (
-            <span className="ml-1 bg-[#b780ff] text-[#19141e] text-[9px] rounded-full px-1.5 py-0.5 leading-none font-semibold">
+            <span className="ml-1 bg-[#b780ff] text-[#0e0e10] text-[9px] rounded-full px-1.5 py-0.5 leading-none font-semibold">
               {sets.length}
             </span>
           )}
@@ -120,13 +117,13 @@ export default function LeftSidebar({ user }: Props) {
         <div className="flex flex-col flex-1 overflow-hidden">
 
           {/* Banner */}
-          <div className="flex-1 flex flex-col overflow-hidden mx-4 mb-2 rounded-xl bg-white/[0.04] border border-white/[0.04]">
+          <div className="flex-1 flex flex-col overflow-hidden mx-4 mb-2 rounded-xl bg-[#1e1e20] border border-[#252527]">
             <div className="flex items-center justify-between px-3 py-2.5 shrink-0">
               <div className="flex items-center gap-2">
-                <ImageIcon className="w-3 h-3 text-[#b780ff]/50" />
-                <span className="text-[10px] font-medium text-white/30 uppercase tracking-widest">Banner</span>
+                <ImageIcon className="w-3 h-3 text-white/20" />
+                <span className="text-[10px] font-medium text-white/25 uppercase tracking-widest">Banner</span>
               </div>
-              <button onClick={() => bannerInputRef.current?.click()} className="text-white/20 hover:text-[#b780ff]/60 transition-colors">
+              <button onClick={() => bannerInputRef.current?.click()} className="text-white/20 hover:text-white/50 transition-colors">
                 <Plus className="w-3.5 h-3.5" />
               </button>
               <input ref={bannerInputRef} type="file" accept="image/png,image/*" multiple className="hidden"
@@ -140,8 +137,8 @@ export default function LeftSidebar({ user }: Props) {
               onDrop={onBannerDrop}
             >
               {bannerDragging && (
-                <div className="absolute inset-0 z-10 border-2 border-dashed border-[#b780ff]/50 bg-[#b780ff]/5 rounded-lg flex items-center justify-center pointer-events-none">
-                  <span className="text-[11px] text-[#b780ff]/70">드롭하여 추가</span>
+                <div className="absolute inset-0 z-10 border-2 border-dashed border-[#b780ff]/40 bg-[#b780ff]/5 rounded-lg flex items-center justify-center pointer-events-none">
+                  <span className="text-[11px] text-white/50">드롭하여 추가</span>
                 </div>
               )}
               <div className="grid grid-cols-2 gap-1.5">
@@ -150,14 +147,14 @@ export default function LeftSidebar({ user }: Props) {
                     key={asset.id}
                     onClick={() => selectBanner(asset.id)}
                     className={`flex flex-col items-center rounded-lg overflow-hidden ring-2 transition-all ${
-                      activeBanner?.assetId === asset.id ? 'ring-[#b780ff]/60' : 'ring-transparent hover:ring-[#b780ff]/20'
+                      activeBanner?.assetId === asset.id ? 'ring-[#b780ff]/60' : 'ring-transparent hover:ring-white/15'
                     }`}
                   >
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={asset.dataUrl} alt={asset.name} className="w-full h-14 object-contain bg-black/30" />
-                    <div className="w-full px-1.5 py-1 bg-black/20 flex items-center justify-between">
+                    <div className="w-full px-1.5 py-1 bg-[#161618] flex items-center justify-between">
                       <span className="text-[9px] text-white/30 truncate">{asset.name}</span>
-                      {asset.alphaBounds && <span className="text-[9px] text-[#b780ff]/50 shrink-0 ml-1">α</span>}
+                      {asset.alphaBounds && <span className="text-[9px] text-white/25 shrink-0 ml-1">α</span>}
                     </div>
                   </button>
                 ))}
@@ -171,13 +168,13 @@ export default function LeftSidebar({ user }: Props) {
           </div>
 
           {/* Video */}
-          <div className="flex-1 flex flex-col overflow-hidden mx-4 mb-3 rounded-xl bg-white/[0.04] border border-white/[0.04] relative">
+          <div className="flex-1 flex flex-col overflow-hidden mx-4 mb-3 rounded-xl bg-[#1e1e20] border border-[#252527] relative">
             <div className="flex items-center justify-between px-3 py-2.5 shrink-0">
               <div className="flex items-center gap-2">
-                <Film className="w-3 h-3 text-[#b780ff]/50" />
-                <span className="text-[10px] font-medium text-white/30 uppercase tracking-widest">Video</span>
+                <Film className="w-3 h-3 text-white/20" />
+                <span className="text-[10px] font-medium text-white/25 uppercase tracking-widest">Video</span>
               </div>
-              <button onClick={() => videoInputRef.current?.click()} className="text-white/20 hover:text-[#b780ff]/60 transition-colors">
+              <button onClick={() => videoInputRef.current?.click()} className="text-white/20 hover:text-white/50 transition-colors">
                 <Plus className="w-3.5 h-3.5" />
               </button>
               <input ref={videoInputRef} type="file" accept="video/*" multiple className="hidden"
@@ -191,8 +188,8 @@ export default function LeftSidebar({ user }: Props) {
               onDrop={onVideoDrop}
             >
               {videoDragging && (
-                <div className="absolute inset-0 z-10 border-2 border-dashed border-[#b780ff]/50 bg-[#b780ff]/5 rounded-lg flex items-center justify-center pointer-events-none">
-                  <span className="text-[11px] text-[#b780ff]/70">드롭하여 추가</span>
+                <div className="absolute inset-0 z-10 border-2 border-dashed border-[#b780ff]/40 bg-[#b780ff]/5 rounded-lg flex items-center justify-center pointer-events-none">
+                  <span className="text-[11px] text-white/50">드롭하여 추가</span>
                 </div>
               )}
               <div className="grid grid-cols-2 gap-1.5">
@@ -201,14 +198,14 @@ export default function LeftSidebar({ user }: Props) {
                     key={asset.id}
                     onClick={() => selectVideo(asset.id)}
                     className={`flex flex-col items-center rounded-lg overflow-hidden ring-2 transition-all ${
-                      activeVideo?.assetId === asset.id ? 'ring-[#b780ff]/60' : 'ring-transparent hover:ring-[#b780ff]/20'
+                      activeVideo?.assetId === asset.id ? 'ring-[#b780ff]/60' : 'ring-transparent hover:ring-white/15'
                     }`}
                   >
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={asset.thumbnailUrl} alt={asset.name} className="w-full h-14 object-cover bg-black/30" />
-                    <div className="w-full px-1.5 py-1 bg-black/20 flex items-center justify-between">
+                    <div className="w-full px-1.5 py-1 bg-[#161618] flex items-center justify-between">
                       <span className="text-[9px] text-white/30 truncate">{asset.name}</span>
-                      <span className="text-[9px] text-[#b780ff]/50 shrink-0 ml-1">{asset.duration.toFixed(1)}s</span>
+                      <span className="text-[9px] text-white/25 shrink-0 ml-1">{asset.duration.toFixed(1)}s</span>
                     </div>
                   </button>
                 ))}
@@ -221,7 +218,7 @@ export default function LeftSidebar({ user }: Props) {
             </div>
 
             {!activeBanner && (
-              <div className="absolute inset-0 rounded-xl bg-[#171519]/70 flex items-center justify-center pointer-events-none">
+              <div className="absolute inset-0 rounded-xl bg-[#161618]/80 flex items-center justify-center pointer-events-none">
                 <span className="text-[10px] text-white/20 text-center px-4">배너를 먼저 선택하세요</span>
               </div>
             )}
@@ -243,14 +240,14 @@ export default function LeftSidebar({ user }: Props) {
               key={s.id}
               className={`flex items-center gap-2.5 px-3.5 py-3 rounded-xl cursor-pointer transition-all group ${
                 activeSetId === s.id
-                  ? 'bg-[#b780ff]/10 ring-1 ring-[#b780ff]/30'
-                  : 'bg-white/[0.04] hover:bg-white/[0.07]'
+                  ? 'bg-[#222224] ring-1 ring-[#b780ff]/30'
+                  : 'bg-[#1e1e20] hover:bg-[#222224]'
               }`}
               onClick={() => loadSet(s.id)}
             >
               <div className="flex-1 overflow-hidden">
-                <div className={`text-[12px] truncate font-medium ${activeSetId === s.id ? 'text-[#b780ff]' : 'text-white/60'}`}>{s.name}</div>
-                <div className="text-[10px] text-white/25 mt-0.5">{s.projectDuration.toFixed(1)}s</div>
+                <div className={`text-[12px] truncate font-medium ${activeSetId === s.id ? 'text-white/70' : 'text-white/45'}`}>{s.name}</div>
+                <div className="text-[10px] text-white/20 mt-0.5">{s.projectDuration.toFixed(1)}s</div>
               </div>
               <button
                 onClick={(e) => { e.stopPropagation(); removeSet(s.id) }}
@@ -268,7 +265,7 @@ export default function LeftSidebar({ user }: Props) {
         <button
           onClick={saveSet}
           disabled={!activeBanner || !activeVideo}
-          className="w-full flex items-center justify-center gap-2 bg-white/[0.05] hover:bg-white/[0.08] disabled:opacity-15 disabled:cursor-not-allowed text-white/40 text-[12px] rounded-xl transition-colors h-11 border border-white/[0.06]"
+          className="w-full flex items-center justify-center gap-2 bg-[#222224] hover:bg-[#2a2a2c] disabled:opacity-15 disabled:cursor-not-allowed text-white/35 text-[12px] rounded-xl transition-colors h-11 border border-[#2e2e30]"
         >
           <Plus className="w-3.5 h-3.5" />
           세트로 등록
@@ -283,7 +280,7 @@ function TabBtn({ active, onClick, children }: { active: boolean; onClick: () =>
     <button
       onClick={onClick}
       className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-[11px] transition-all ${
-        active ? 'bg-[#b780ff]/15 text-[#b780ff]' : 'text-white/25 hover:text-white/50'
+        active ? 'bg-[#2a2a2c] text-white/70' : 'text-white/25 hover:text-white/45'
       }`}
     >
       {children}
@@ -344,4 +341,3 @@ function getVideoThumbnail(url: string): Promise<string> {
     v.onerror = () => resolve('')
   })
 }
-

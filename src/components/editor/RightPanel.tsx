@@ -79,22 +79,22 @@ export default function RightPanel() {
 
   return (
     <>
-      <aside className="w-[256px] h-full bg-[#171519]/90 backdrop-blur-xl border border-[#b780ff]/10 rounded-2xl flex flex-col shrink-0 overflow-hidden shadow-2xl shadow-black/40">
+      <aside className="w-[256px] h-full bg-[#161618] border border-[#252527] rounded-2xl flex flex-col shrink-0 overflow-hidden shadow-2xl shadow-black/60">
 
         {/* 헤더 */}
         <div className="px-5 pt-5 pb-4 shrink-0">
-          <span className="text-[13px] font-medium text-white/70 tracking-tight">Properties</span>
+          <span className="text-[13px] font-medium text-white/50 tracking-tight">Properties</span>
         </div>
 
         <div className="flex-1 overflow-y-auto px-4 pb-4 space-y-5 scrollbar-none">
 
           {/* Canvas Size */}
           <Section title="Canvas Size" icon={<Monitor className="w-3.5 h-3.5" />}>
-            <div className="rounded-xl bg-white/[0.04] px-4 py-3">
+            <div className="rounded-xl bg-[#1e1e20] px-4 py-3 border border-[#252527]">
               {sizeLabel ? (
                 <div className="flex items-center justify-between">
                   <span className="text-[11px] text-white/25">Size</span>
-                  <span className="text-[12px] text-white/60 font-medium">{sizeLabel}</span>
+                  <span className="text-[12px] text-white/55 font-medium">{sizeLabel}</span>
                 </div>
               ) : (
                 <span className="text-[11px] text-white/20">배너를 업로드하면 설정됩니다</span>
@@ -102,7 +102,7 @@ export default function RightPanel() {
             </div>
           </Section>
 
-          {/* Export Quality — 낮은 위계: 텍스트 버튼 스타일 */}
+          {/* Export Quality */}
           <Section title="Quality" icon={<Zap className="w-3.5 h-3.5" />}>
             <div className="flex gap-1.5">
               {(Object.keys(QUALITY_MAP) as Quality[]).map((q) => (
@@ -111,8 +111,8 @@ export default function RightPanel() {
                   onClick={() => setQuality(q)}
                   className={`flex-1 py-1.5 rounded-lg text-[11px] transition-all border ${
                     quality === q
-                      ? 'border-[#b780ff]/40 bg-[#b780ff]/10 text-[#b780ff]'
-                      : 'border-white/[0.06] text-white/25 hover:text-white/45 hover:border-white/10'
+                      ? 'border-[#b780ff]/50 bg-[#b780ff]/10 text-[#b780ff]'
+                      : 'border-[#252527] text-white/25 hover:text-white/45 hover:border-[#333335]'
                   }`}
                 >
                   {q.charAt(0).toUpperCase() + q.slice(1)}
@@ -121,7 +121,7 @@ export default function RightPanel() {
             </div>
           </Section>
 
-          {/* Speed — 낮은 위계 */}
+          {/* Speed */}
           <Section title="Speed" icon={<Gauge className="w-3.5 h-3.5" />}>
             <div className={`grid grid-cols-4 gap-1.5 ${!activeVideo ? 'opacity-20 pointer-events-none' : ''}`}>
               {SPEED_OPTIONS.map((s) => (
@@ -130,8 +130,8 @@ export default function RightPanel() {
                   onClick={() => updateVideoClip({ speed: s })}
                   className={`py-1.5 rounded-lg text-[11px] transition-all border ${
                     activeVideo?.speed === s
-                      ? 'border-[#b780ff]/40 bg-[#b780ff]/10 text-[#b780ff]'
-                      : 'border-white/[0.06] text-white/25 hover:text-white/45 hover:border-white/10'
+                      ? 'border-[#b780ff]/50 bg-[#b780ff]/10 text-[#b780ff]'
+                      : 'border-[#252527] text-white/25 hover:text-white/45 hover:border-[#333335]'
                   }`}
                 >
                   {s}x
@@ -152,12 +152,12 @@ export default function RightPanel() {
                   if (asset) selectMusic(asset)
                 }}
                 disabled={!activeSetId}
-                className="w-full px-3 py-2.5 rounded-xl bg-white/[0.04] text-[11px] text-white/60 border border-white/[0.06] outline-none cursor-pointer appearance-none"
+                className="w-full px-3 py-2.5 rounded-xl bg-[#1e1e20] text-[11px] text-white/55 border border-[#252527] outline-none cursor-pointer appearance-none"
                 style={{ backgroundImage: 'none' }}
               >
-                <option value="" style={{ background: '#171519' }}>— BGM 없음 —</option>
+                <option value="" style={{ background: '#161618' }}>— BGM 없음 —</option>
                 {musicAssets.map((asset) => (
-                  <option key={asset.id} value={asset.id} style={{ background: '#171519' }}>
+                  <option key={asset.id} value={asset.id} style={{ background: '#161618' }}>
                     {asset.name}
                   </option>
                 ))}
@@ -192,11 +192,11 @@ export default function RightPanel() {
 
         </div>
 
-        {/* Export 버튼 — 최상위 위계 */}
+        {/* Export 버튼 */}
         <div className="px-4 pb-4 shrink-0">
           <button
             onClick={() => setShowExport(true)}
-            className="w-full flex items-center justify-center gap-2 bg-[#b780ff] hover:bg-[#c99aff] active:bg-[#a066ee] text-[#19141e] text-[13px] font-semibold rounded-xl transition-colors h-11 shadow-lg shadow-[#b780ff]/20"
+            className="w-full flex items-center justify-center gap-2 bg-[#b780ff] hover:bg-[#c99aff] active:bg-[#a066ee] text-[#0e0e10] text-[13px] font-semibold rounded-xl transition-colors h-11 shadow-lg shadow-black/30"
           >
             <Download className="w-4 h-4" />
             Export
@@ -215,8 +215,8 @@ function Section({ title, icon, children }: {
   return (
     <div className="space-y-2">
       <div className="flex items-center gap-2">
-        <span className="text-[#b780ff]/40">{icon}</span>
-        <span className="text-[10px] font-medium text-white/25 uppercase tracking-widest">{title}</span>
+        <span className="text-white/20">{icon}</span>
+        <span className="text-[10px] font-medium text-white/20 uppercase tracking-widest">{title}</span>
       </div>
       {children}
     </div>
@@ -227,10 +227,10 @@ function VolumeSlider({ label, value, onChange }: {
   label: string; value: number; onChange: (v: number) => void
 }) {
   return (
-    <div className="rounded-xl bg-white/[0.04] px-4 py-3 space-y-2 border border-white/[0.04]">
+    <div className="rounded-xl bg-[#1e1e20] px-4 py-3 space-y-2 border border-[#252527]">
       <div className="flex items-center justify-between">
         <span className="text-[11px] text-white/30">{label}</span>
-        <span className="text-[11px] font-mono text-[#b780ff]/70">{Math.round(value * 100)}%</span>
+        <span className="text-[11px] font-mono text-white/40">{Math.round(value * 100)}%</span>
       </div>
       <input
         type="range" min={0} max={1} step={0.01}
