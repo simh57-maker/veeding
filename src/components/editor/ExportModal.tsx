@@ -85,6 +85,7 @@ export default function ExportModal({ onClose }: Props) {
     banner: typeof activeBanner,
     video: typeof activeVideo,
     filename: string,
+    onEncodeStart: () => void,
   ): Promise<Blob> {
 
     const videoAsset = videoAssets.find((v) => v.id === video!.assetId)!
@@ -195,6 +196,7 @@ export default function ExportModal({ onClose }: Props) {
       filename,
     ]
 
+    onEncodeStart()
     await ffmpeg.exec(cmd)
 
     const data = await ffmpeg.readFile(filename)
@@ -241,7 +243,6 @@ export default function ExportModal({ onClose }: Props) {
         const { w, h } = getSetDimensions(found)
 
         updateJob(i, jobList, { status: 'processing', remainSec: null })
-        const startTs = performance.now()
 
         try {
           if (!found.video) throw new Error('영상이 없습니다')
@@ -252,15 +253,22 @@ export default function ExportModal({ onClose }: Props) {
             ? measuredFactorRef.current * (w * h / 1_000_000) * found.projectDuration
             : found.projectDuration * 10
 
-          const pollInterval = setInterval(() => {
-            const elapsed = (performance.now() - startTs) / 1000
-            const p = Math.min(95, Math.round((elapsed / estimatedSec) * 100))
-            const remain = Math.max(0, estimatedSec - elapsed)
-            updateJob(i, jobList, { progress: p, remainSec: remain })
-          }, 500)
+          let encodeStartTs = performance.now()
+          let pollInterval: ReturnType<typeof setInterval> | null = null
 
-          const blob = await renderOne(ffmpeg, found.banner, found.video, filename)
-          clearInterval(pollInterval)
+          const onEncodeStart = () => {
+            encodeStartTs = performance.now()
+            pollInterval = setInterval(() => {
+              const elapsed = (performance.now() - encodeStartTs) / 1000
+              const p = Math.min(95, Math.round((elapsed / estimatedSec) * 100))
+              const remain = Math.max(0, estimatedSec - elapsed)
+              updateJob(i, jobList, { progress: p, remainSec: remain })
+            }, 500)
+          }
+
+          const blob = await renderOne(ffmpeg, found.banner, found.video, filename, onEncodeStart)
+          if (pollInterval) clearInterval(pollInterval)
+          const startTs = encodeStartTs
 
           const elapsed = (performance.now() - startTs) / 1000
           const mp = (w * h) / 1_000_000
