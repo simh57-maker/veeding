@@ -275,10 +275,13 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     const clipDuration = (outPoint - inPoint) / activeVideo.speed
 
     // alphaBounds 계산
+    // 영상이 alphaBounds 영역을 완전히 덮도록: 가로/세로 중 더 큰 비율 사용
     let newVideo = { ...activeVideo }
     if (bannerAsset.alphaBounds) {
       const { x, y, width, height } = bannerAsset.alphaBounds
-      const scale = (height / videoAsset.height) * 1.01
+      const scaleByH = height / videoAsset.height
+      const scaleByW = width  / videoAsset.width
+      const scale = Math.max(scaleByH, scaleByW) * 1.01
       newVideo = { ...newVideo, x: x + width / 2, y: y + height / 2, scaleX: scale, scaleY: scale }
     }
 
