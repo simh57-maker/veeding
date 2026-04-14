@@ -53,6 +53,7 @@ export default function RightPanel() {
   const {
     activeVideo, updateVideoClip, activeBanner, bannerAssets,
     musicAssets, musicTrack, addMusicAsset, setMusicTrack, updateMusicTrack, videoAssets, activeSetId,
+    isPlaying, setIsPlaying,
   } = useEditorStore()
   const [showExport, setShowExport] = useState(false)
   const [bgmTab, setBgmTab] = useState<'Chill' | 'Cool'>('Chill')
@@ -216,7 +217,7 @@ export default function RightPanel() {
         {/* Export 버튼 */}
         <div className="px-4 pb-4 shrink-0">
           <button
-            onClick={() => setShowExport(true)}
+            onClick={() => { if (isPlaying) setIsPlaying(false); setShowExport(true) }}
             className="w-full flex items-center justify-center gap-2 bg-[#b780ff] hover:bg-[#c99aff] active:bg-[#a066ee] text-[#181819] text-[13px] font-semibold rounded-xl transition-colors h-11 shadow-lg shadow-black/30"
           >
             <Download className="w-4 h-4" />
