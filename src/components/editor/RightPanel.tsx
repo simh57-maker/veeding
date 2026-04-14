@@ -158,7 +158,7 @@ export default function RightPanel() {
           </Section>
 
           {/* BGM */}
-          <Section title="BGM" icon={<Music className="w-3.5 h-3.5" />} sub={!activeSetId ? '세트 선택 후 등록 가능' : undefined}>
+          <Section title="BGM" icon={<Music className="w-3.5 h-3.5" />}>
             <div className={`space-y-2 ${!activeSetId ? 'opacity-20 pointer-events-none' : ''}`}>
               {/* Chill / Cool 탭 */}
               <div className="flex gap-1.5">
@@ -229,9 +229,6 @@ export default function RightPanel() {
                 onChange={(v) => updateMusicTrack({ videoVolume: v })}
               />
             </div>
-            {activeSetId && !musicTrack && (
-              <p className="text-[10px] text-white/15 mt-2">BGM을 선택하면 조절할 수 있습니다</p>
-            )}
           </Section>
 
         </div>
