@@ -1,8 +1,8 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { useEditorStore, QUALITY_MAP, Quality, MusicAsset } from '@/store/editorStore'
-import { Download, Monitor, Music, Gauge, Zap, Volume2 } from 'lucide-react'
+import { useEditorStore, MusicAsset } from '@/store/editorStore'
+import { Download, Monitor, Music, Gauge, Volume2 } from 'lucide-react'
 import ExportModal from './ExportModal'
 
 const SPEED_OPTIONS = [1.0, 1.2, 1.3, 1.5]
@@ -51,7 +51,7 @@ async function measureVideoRMS(videoUrl: string): Promise<number> {
 
 export default function RightPanel() {
   const {
-    activeVideo, updateVideoClip, quality, setQuality, activeBanner, bannerAssets,
+    activeVideo, updateVideoClip, activeBanner, bannerAssets,
     musicAssets, musicTrack, addMusicAsset, setMusicTrack, updateMusicTrack, videoAssets, activeSetId,
   } = useEditorStore()
   const [showExport, setShowExport] = useState(false)
@@ -119,24 +119,6 @@ export default function RightPanel() {
             </div>
           </Section>
 
-          {/* Export Quality */}
-          <Section title="Quality" icon={<Zap className="w-3.5 h-3.5" />}>
-            <div className="flex gap-1.5">
-              {(Object.keys(QUALITY_MAP) as Quality[]).map((q) => (
-                <button
-                  key={q}
-                  onClick={() => setQuality(q)}
-                  className={`flex-1 py-1.5 rounded-lg text-[11px] transition-all border ${
-                    quality === q
-                      ? 'border-[#b780ff]/50 bg-[#b780ff]/10 text-[#b780ff]'
-                      : 'border-[#2f2f31] text-white/25 hover:text-white/45 hover:border-[#333335]'
-                  }`}
-                >
-                  {q.charAt(0).toUpperCase() + q.slice(1)}
-                </button>
-              ))}
-            </div>
-          </Section>
 
           {/* Speed */}
           <Section title="Speed" icon={<Gauge className="w-3.5 h-3.5" />}>
