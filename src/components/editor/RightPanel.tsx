@@ -210,13 +210,13 @@ export default function RightPanel() {
                   ))}
               </div>
 
-              {musicTrack && (
+              <div className={!musicTrack ? 'opacity-20 pointer-events-none' : ''}>
                 <VolumeSlider
                   label="BGM"
-                  value={musicTrack.volume}
+                  value={musicTrack?.volume ?? 1}
                   onChange={(v) => updateMusicTrack({ volume: v })}
                 />
-              )}
+              </div>
             </div>
           </Section>
 
