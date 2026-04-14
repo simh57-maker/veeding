@@ -7,9 +7,30 @@ import ExportModal from './ExportModal'
 
 const SPEED_OPTIONS = [1.0, 1.2, 1.3, 1.5]
 
-const BUILT_IN_MUSIC = [
-  { name: 'Jarabe de Tequila - Inaban & Nabani', path: '/asset/music/Jarabe de Tequila - Inaban _ Nabani.mp3' },
-  { name: 'Jumpy Pants - Freedom Trail Studio',  path: '/asset/music/Jumpy Pants - Freedom Trail Studio.mp3' },
+const BUILT_IN_MUSIC: { category: 'Chill' | 'Cool'; name: string; path: string }[] = [
+  // Chill
+  { category: 'Chill', name: 'Aves - Coffee Stop',                           path: '/asset/music/Chill/Aves - Coffee Stop.mp3' },
+  { category: 'Chill', name: 'Aves - Velvet',                                path: '/asset/music/Chill/Aves - Velvet.mp3' },
+  { category: 'Chill', name: 'Eden Barel - Cutting Cookies',                 path: '/asset/music/Chill/Eden Barel - Cutting Cookies.mp3' },
+  { category: 'Chill', name: 'Heron Vale - Mistletoe Glow',                  path: '/asset/music/Chill/Heron Vale - Mistletoe Glow.mp3' },
+  { category: 'Chill', name: 'Jim Swim - Tornadoes (Instrumental)',          path: '/asset/music/Chill/Jim Swim - Tornadoes - Instrumental version.mp3' },
+  { category: 'Chill', name: 'Jimit - Honey',                                path: '/asset/music/Chill/Jimit - Honey.mp3' },
+  { category: 'Chill', name: 'Magiksolo - Shoujo',                           path: '/asset/music/Chill/Magiksolo - Shoujo.mp3' },
+  { category: 'Chill', name: 'Skipp Whitman - Closing Doors (Instrumental)', path: '/asset/music/Chill/Skipp Whitman - Closing Doors - Instrumental version.mp3' },
+  { category: 'Chill', name: 'Skygaze - Kissing the Moon',                   path: '/asset/music/Chill/Skygaze - Kissing the Moon.mp3' },
+  { category: 'Chill', name: 'Ziv Moran - Dance (Short)',                    path: '/asset/music/Chill/Ziv Moran - Dance - Short version a.mp3' },
+  // Cool
+  { category: 'Cool', name: 'BalloonPlanet - Breaking Sweat (Short)',        path: '/asset/music/Cool/BalloonPlanet - Breaking Sweat - Short version.mp3' },
+  { category: 'Cool', name: 'BalloonPlanet - Cool My Bass',                  path: '/asset/music/Cool/BalloonPlanet - Cool My Bass.mp3' },
+  { category: 'Cool', name: 'Ben Fox - The Bounce (Instrumental)',            path: '/asset/music/Cool/Ben Fox - The Bounce - Instrumental version.mp3' },
+  { category: 'Cool', name: 'Captain Joz - Ima B Da Baddest (Instrumental)', path: '/asset/music/Cool/Captain Joz - Ima B Da Baddest - Instrumental - Short version.mp3' },
+  { category: 'Cool', name: 'Damon Power - All the Way',                     path: '/asset/music/Cool/Damon Power - All the Way.mp3' },
+  { category: 'Cool', name: 'Jimit - Move It',                               path: '/asset/music/Cool/Jimit - Move It.mp3' },
+  { category: 'Cool', name: 'MooveKa - Play It Cool',                        path: '/asset/music/Cool/MooveKa - Play It Cool.mp3' },
+  { category: 'Cool', name: 'Out of Flux - BAM BAM',                         path: '/asset/music/Cool/Out of Flux - BAM BAM.mp3' },
+  { category: 'Cool', name: 'Randy Sharp - Milo My',                         path: '/asset/music/Cool/Randy Sharp - Milo My.mp3' },
+  { category: 'Cool', name: 'Roie Shpigler - Milky Way (Short)',              path: '/asset/music/Cool/Roie Shpigler - Milky Way - Alternative - Short version b.mp3' },
+  { category: 'Cool', name: 'feinsmecker - Come Again',                       path: '/asset/music/Cool/feinsmecker - Come Again.mp3' },
 ]
 
 async function measureVideoRMS(videoUrl: string): Promise<number> {
@@ -34,6 +55,7 @@ export default function RightPanel() {
     musicAssets, musicTrack, addMusicAsset, setMusicTrack, updateMusicTrack, videoAssets, activeSetId,
   } = useEditorStore()
   const [showExport, setShowExport] = useState(false)
+  const [bgmTab, setBgmTab] = useState<'Chill' | 'Cool'>('Chill')
   const prevSetId = useRef<string | null>(null)
 
   useEffect(() => {
@@ -136,27 +158,57 @@ export default function RightPanel() {
           </Section>
 
           {/* BGM */}
-          <Section title="BGM" icon={<Music className="w-3.5 h-3.5" />} sub={!activeSetId ? '세트 선택 후, BGM 등록 가능' : undefined}>
-            <div className={`space-y-3 ${!activeSetId ? 'opacity-20 pointer-events-none' : ''}`}>
-              <select
-                value={musicTrack?.assetId ?? ''}
-                onChange={(e) => {
-                  const id = e.target.value
-                  if (!id) { setMusicTrack(null); return }
-                  const asset = musicAssets.find((m) => m.id === id)
-                  if (asset) selectMusic(asset)
-                }}
-                disabled={!activeSetId}
-                className="w-full px-3 py-2.5 rounded-xl bg-[#28282a] text-[11px] text-white/55 border border-[#2f2f31] outline-none cursor-pointer appearance-none"
-                style={{ backgroundImage: 'none' }}
-              >
-                <option value="" style={{ background: '#202022' }}>— BGM 없음 —</option>
-                {musicAssets.map((asset) => (
-                  <option key={asset.id} value={asset.id} style={{ background: '#202022' }}>
-                    {asset.name}
-                  </option>
+          <Section title="BGM" icon={<Music className="w-3.5 h-3.5" />} sub={!activeSetId ? '세트 선택 후 등록 가능' : undefined}>
+            <div className={`space-y-2 ${!activeSetId ? 'opacity-20 pointer-events-none' : ''}`}>
+              {/* Chill / Cool 탭 */}
+              <div className="flex gap-1.5">
+                {(['Chill', 'Cool'] as const).map((tab) => (
+                  <button
+                    key={tab}
+                    onClick={() => setBgmTab(tab)}
+                    className={`flex-1 py-1.5 rounded-lg text-[11px] transition-all border ${
+                      bgmTab === tab
+                        ? 'border-[#b780ff]/50 bg-[#b780ff]/10 text-[#b780ff]'
+                        : 'border-[#2f2f31] text-white/25 hover:text-white/45 hover:border-[#333335]'
+                    }`}
+                  >
+                    {tab}
+                  </button>
                 ))}
-              </select>
+              </div>
+
+              {/* 곡 목록 */}
+              <div className="space-y-1 max-h-[160px] overflow-y-auto scrollbar-none">
+                {/* BGM 없음 버튼 */}
+                <button
+                  onClick={() => setMusicTrack(null)}
+                  className={`w-full text-left px-3 py-2 rounded-lg text-[11px] transition-all border ${
+                    !musicTrack
+                      ? 'border-[#b780ff]/40 bg-[#b780ff]/10 text-[#b780ff]'
+                      : 'border-transparent text-white/25 hover:text-white/45 hover:bg-[#28282a]'
+                  }`}
+                >
+                  — BGM 없음 —
+                </button>
+                {musicAssets
+                  .filter((a) => {
+                    const meta = BUILT_IN_MUSIC.find((m) => m.path === a.id)
+                    return meta?.category === bgmTab
+                  })
+                  .map((asset) => (
+                    <button
+                      key={asset.id}
+                      onClick={() => selectMusic(asset)}
+                      className={`w-full text-left px-3 py-2 rounded-lg text-[11px] transition-all border truncate ${
+                        musicTrack?.assetId === asset.id
+                          ? 'border-[#b780ff]/40 bg-[#b780ff]/10 text-[#b780ff]'
+                          : 'border-transparent text-white/40 hover:text-white/60 hover:bg-[#28282a]'
+                      }`}
+                    >
+                      {asset.name}
+                    </button>
+                  ))}
+              </div>
 
               {musicTrack && (
                 <VolumeSlider
