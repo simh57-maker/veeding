@@ -116,11 +116,9 @@ export default function ExportModal({ onClose }: Props) {
 
     const vSpeedFilter = speed !== 1 ? `setpts=${(1 / speed).toFixed(6)}*PTS,` : ''
 
-    const inputs: string[] = [
-      '-ss', String(inPoint),
-      '-to', String(outPoint),
-      '-i', 'input.mp4',
-    ]
+    // -i 앞에 -ss/-to를 두면 demuxer seek으로 오디오 스트림이 누락될 수 있으므로
+    // -i만 먼저 두고, filter_complex 안에서 trim으로 구간을 자름
+    const inputs: string[] = ['-i', 'input.mp4']
     let bannerIdx = -1
     let musicIdx  = -1
 
@@ -147,17 +145,21 @@ export default function ExportModal({ onClose }: Props) {
       musicIdx = bannerIdx >= 0 ? 2 : 1
     }
 
+    // 영상 구간 trim (filter_complex 안에서)
+    const vTrimFilter = `trim=start=${inPoint}:end=${outPoint},setpts=PTS-STARTPTS,`
+    const aTrimFilter = `atrim=start=${inPoint}:end=${outPoint},asetpts=PTS-STARTPTS,`
+
     let vf: string
     if (bannerIdx >= 0) {
       vf =
-        `[0:v]${vSpeedFilter}scale=${safeW}:${safeH}[scaled];` +
+        `[0:v]${vTrimFilter}${vSpeedFilter}scale=${safeW}:${safeH}[scaled];` +
         `color=black:size=${outW}x${outH}:rate=30[bg];` +
         `[bg][scaled]overlay=${vidX}:${vidY}[vid];` +
         `[${bannerIdx}:v]scale=${outW}:${outH}[banner];` +
         `[vid][banner]overlay=0:0[vout]`
     } else {
       vf =
-        `[0:v]${vSpeedFilter}scale=${safeW}:${safeH}[scaled];` +
+        `[0:v]${vTrimFilter}${vSpeedFilter}scale=${safeW}:${safeH}[scaled];` +
         `color=black:size=${outW}x${outH}:rate=30[bg];` +
         `[bg][scaled]overlay=${vidX}:${vidY}[vout]`
     }
@@ -172,13 +174,13 @@ export default function ExportModal({ onClose }: Props) {
     if (musicIdx >= 0) {
       // 영상 원음 + BGM 믹스
       af =
-        `[0:a]${aSpeedFilter}volume=${videoVol.toFixed(3)}[va];` +
+        `[0:a]${aTrimFilter}${aSpeedFilter}volume=${videoVol.toFixed(3)}[va];` +
         `[${musicIdx}:a]volume=${musicVol.toFixed(3)}[ma];` +
         `[va][ma]amix=inputs=2:duration=first[aout]`
       maps.push('-map', '[aout]')
     } else {
       // BGM 없음: 영상 원음만 출력
-      af = `[0:a]${aSpeedFilter}volume=${videoVol.toFixed(3)}[aout]`
+      af = `[0:a]${aTrimFilter}${aSpeedFilter}volume=${videoVol.toFixed(3)}[aout]`
       maps.push('-map', '[aout]')
     }
 
