@@ -147,9 +147,6 @@ export default function ExportModal({ onClose }: Props) {
       musicIdx = bannerIdx >= 0 ? 2 : 1
     }
 
-    const silenceIdx = inputs.filter((a) => a === '-i').length
-    inputs.push('-f', 'lavfi', '-i', `anullsrc=r=44100:cl=stereo:d=${clipLen}`)
-
     let vf: string
     if (bannerIdx >= 0) {
       vf =
@@ -166,14 +163,22 @@ export default function ExportModal({ onClose }: Props) {
     }
 
     const musicVol = musicTrack?.volume ?? 0
+    const videoVol = musicTrack?.videoVolume ?? 1
     const maps: string[] = ['-map', '[vout]']
     let af: string
 
+    const aSpeedFilter = speed !== 1 ? `atempo=${speed.toFixed(6)},` : ''
+
     if (musicIdx >= 0) {
-      af = `[${musicIdx}:a]volume=${musicVol.toFixed(3)}[aout]`
+      // 영상 원음 + BGM 믹스
+      af =
+        `[0:a]${aSpeedFilter}volume=${videoVol.toFixed(3)}[va];` +
+        `[${musicIdx}:a]volume=${musicVol.toFixed(3)}[ma];` +
+        `[va][ma]amix=inputs=2:duration=first[aout]`
       maps.push('-map', '[aout]')
     } else {
-      af = `[${silenceIdx}:a]anull[aout]`
+      // BGM 없음: 영상 원음만 출력
+      af = `[0:a]${aSpeedFilter}volume=${videoVol.toFixed(3)}[aout]`
       maps.push('-map', '[aout]')
     }
 
