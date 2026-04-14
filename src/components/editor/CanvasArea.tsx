@@ -191,7 +191,7 @@ export default function CanvasArea() {
     }
   }, [isPlaying, activeVideo, activeBanner, bannerAsset, videoAsset, canvasW, canvasH, getVideoBox, getHandles])
 
-  // 음악 오디오 동기화
+  // 음악 오디오 동기화 — src 변경(곡 교체/재생 상태)과 volume 변경을 분리
   useEffect(() => {
     const musicAsset = musicTrack ? musicAssets.find((m) => m.id === musicTrack.assetId) : null
     if (!musicAudioRef.current) {
@@ -199,9 +199,8 @@ export default function CanvasArea() {
       musicAudioRef.current.loop = true
     }
     const audio = musicAudioRef.current
-    if (musicAsset) {
-      if (audio.src !== musicAsset.url) audio.src = musicAsset.url
-      audio.volume = musicTrack?.volume ?? 1
+    if (musicAsset && audio.src !== musicAsset.url) {
+      audio.src = musicAsset.url
     }
     if (isPlaying && musicAsset) {
       audio.play().catch(() => {})
@@ -209,7 +208,14 @@ export default function CanvasArea() {
       audio.pause()
     }
     return () => { audio.pause() }
-  }, [isPlaying, musicTrack, musicAssets])
+  }, [isPlaying, musicTrack?.assetId, musicAssets])
+
+  // 볼륨만 바뀔 때는 재시작 없이 volume만 업데이트
+  useEffect(() => {
+    const audio = musicAudioRef.current
+    if (!audio) return
+    audio.volume = musicTrack?.volume ?? 1
+  }, [musicTrack?.volume])
 
   // 비디오 볼륨 동기화
   useEffect(() => {
