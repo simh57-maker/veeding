@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react'
 import { X, Download, Loader2, CheckCircle } from 'lucide-react'
-import { useEditorStore, QUALITY_MAP, CompositionSet } from '@/store/editorStore'
+import { useEditorStore, QUALITY_MAP, CompositionSet, MusicTrack } from '@/store/editorStore'
 
 interface Props {
   onClose: () => void
@@ -66,7 +66,7 @@ function buildAtempoFilter(speed: number): string {
 }
 
 export default function ExportModal({ onClose }: Props) {
-  const { activeVideo, activeBanner, videoAssets, bannerAssets, musicAssets, musicTrack, quality, sets } = useEditorStore()
+  const { activeVideo, activeBanner, videoAssets, bannerAssets, musicAssets, quality, sets } = useEditorStore()
 
   const activeBannerAsset = activeBanner ? bannerAssets.find((b) => b.id === activeBanner.assetId) : null
   const resW = activeBannerAsset?.width  ?? 1920
@@ -107,6 +107,7 @@ export default function ExportModal({ onClose }: Props) {
     ffmpeg: import('@ffmpeg/ffmpeg').FFmpeg,
     banner: typeof activeBanner,
     video: typeof activeVideo,
+    setMusicTrack: MusicTrack | null,
     filename: string,
     onProgress: (ratio: number) => void,
   ): Promise<Blob> {
@@ -154,7 +155,7 @@ export default function ExportModal({ onClose }: Props) {
       bannerIdx = 1
     }
 
-    const musicAsset = musicTrack ? musicAssets.find((m) => m.id === musicTrack.assetId) : null
+    const musicAsset = setMusicTrack ? musicAssets.find((m) => m.id === setMusicTrack.assetId) : null
     if (musicAsset) {
       const musicData = await fetchToUint8Array(musicAsset.url)
       await ffmpeg.writeFile('bgm.mp3', musicData)
@@ -188,8 +189,8 @@ export default function ExportModal({ onClose }: Props) {
         `[bg][scaled]overlay=${vidX}:${vidY}[vout]`
     }
 
-    const musicVol = musicTrack?.volume ?? 0
-    const videoVol = musicTrack?.videoVolume ?? 1
+    const musicVol = setMusicTrack?.volume ?? 0
+    const videoVol = setMusicTrack?.videoVolume ?? 1
     const maps: string[] = ['-map', '[vout]']
     let af: string
 
@@ -292,7 +293,7 @@ export default function ExportModal({ onClose }: Props) {
             updateJob(i, jobList, { progress: p, remainSec: remain })
           }
 
-          const blob = await renderOne(ffmpeg, found.banner, found.video, filename, onProgress)
+          const blob = await renderOne(ffmpeg, found.banner, found.video, found.musicTrack, filename, onProgress)
 
           const elapsed = (performance.now() - startTs) / 1000
           const mp = (w * h) / 1_000_000

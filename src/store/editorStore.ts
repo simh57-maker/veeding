@@ -75,6 +75,7 @@ export interface CompositionSet {
   banner: BannerClip
   video: VideoClip
   projectDuration: number
+  musicTrack: MusicTrack | null
 }
 
 interface HistoryEntry {
@@ -184,10 +185,25 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       activeVideo: s.activeVideo?.assetId === id ? null : s.activeVideo,
     })),
 
-  setMusicTrack: (track) => set({ musicTrack: track }),
+  setMusicTrack: (track) =>
+    set((s) => ({
+      musicTrack: track,
+      sets: s.activeSetId
+        ? s.sets.map((entry) => entry.id === s.activeSetId ? { ...entry, musicTrack: track } : entry)
+        : s.sets,
+    })),
 
   updateMusicTrack: (partial) =>
-    set((s) => s.musicTrack ? { musicTrack: { ...s.musicTrack, ...partial } } : {}),
+    set((s) => {
+      if (!s.musicTrack) return {}
+      const updated = { ...s.musicTrack, ...partial }
+      return {
+        musicTrack: updated,
+        sets: s.activeSetId
+          ? s.sets.map((entry) => entry.id === s.activeSetId ? { ...entry, musicTrack: updated } : entry)
+          : s.sets,
+      }
+    }),
 
   setActiveBanner: (clip) => {
     if (!clip) { set({ activeBanner: null }); return }
@@ -308,7 +324,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   },
 
   saveSet: () => {
-    const { activeBanner, activeVideo, projectDuration, sets, bannerAssets, videoAssets } = get()
+    const { activeBanner, activeVideo, projectDuration, musicTrack, sets, bannerAssets, videoAssets } = get()
     if (!activeBanner || !activeVideo) return
 
     const bannerAsset = bannerAssets.find((b) => b.id === activeBanner.assetId)
@@ -322,6 +338,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       banner: { ...activeBanner },
       video: { ...activeVideo },
       projectDuration,
+      musicTrack: musicTrack ? { ...musicTrack } : null,
     }
 
     set({ sets: [...sets, newSet], activeSetId: newSet.id })
@@ -335,6 +352,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       activeBanner: { ...found.banner },
       activeVideo: { ...found.video },
       projectDuration: found.projectDuration,
+      musicTrack: found.musicTrack ? { ...found.musicTrack } : null,
       currentTime: 0,
       activeSetId: id,
     })
