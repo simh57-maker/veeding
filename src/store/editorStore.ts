@@ -113,6 +113,8 @@ export interface EditorState {
   addBannerAsset: (asset: BannerAsset) => void
   addVideoAsset: (asset: VideoAsset) => void
   addMusicAsset: (asset: MusicAsset) => void
+  removeBannerAsset: (id: string) => void
+  removeVideoAsset: (id: string) => void
   setMusicTrack: (track: MusicTrack | null) => void
   updateMusicTrack: (partial: Partial<MusicTrack>) => void
 
@@ -169,6 +171,18 @@ export const useEditorStore = create<EditorState>((set, get) => ({
 
   addMusicAsset: (asset) =>
     set((s) => ({ musicAssets: [...s.musicAssets, asset] })),
+
+  removeBannerAsset: (id) =>
+    set((s) => ({
+      bannerAssets: s.bannerAssets.filter((a) => a.id !== id),
+      activeBanner: s.activeBanner?.assetId === id ? null : s.activeBanner,
+    })),
+
+  removeVideoAsset: (id) =>
+    set((s) => ({
+      videoAssets: s.videoAssets.filter((a) => a.id !== id),
+      activeVideo: s.activeVideo?.assetId === id ? null : s.activeVideo,
+    })),
 
   setMusicTrack: (track) => set({ musicTrack: track }),
 

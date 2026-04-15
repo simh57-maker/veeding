@@ -78,7 +78,7 @@ export default function RightPanel() {
     const videoAsset = activeVideo ? videoAssets.find((v) => v.id === activeVideo.assetId) : null
     if (!videoAsset) return
     measureVideoRMS(videoAsset.url).then((rms) => {
-      const bgmVol = Math.min(1, Math.max(0.05, rms * 0.2))
+      const bgmVol = Math.min(1, Math.max(0.2, rms * 0.2))
       setMusicTrack({ ...musicTrack, volume: parseFloat(bgmVol.toFixed(2)) })
     })
   }, [activeSetId]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -92,7 +92,7 @@ export default function RightPanel() {
     const videoAsset = activeVideo ? videoAssets.find((v) => v.id === activeVideo.assetId) : null
     if (videoAsset) {
       measureVideoRMS(videoAsset.url).then((rms) => {
-        const bgmVol = Math.min(1, Math.max(0.05, rms * 0.2))
+        const bgmVol = Math.min(1, Math.max(0.2, rms * 0.2))
         setMusicTrack({ assetId: asset.id, volume: parseFloat(bgmVol.toFixed(2)), videoVolume: 1 })
       })
     } else {

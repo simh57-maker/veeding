@@ -22,6 +22,7 @@ export default function LeftSidebar({ user }: Props) {
   const {
     bannerAssets, videoAssets,
     addBannerAsset, addVideoAsset,
+    removeBannerAsset, removeVideoAsset,
     setActiveBanner, setActiveVideo,
     activeBanner, activeVideo,
     saveSet,
@@ -146,20 +147,27 @@ export default function LeftSidebar({ user }: Props) {
               )}
               <div className="grid grid-cols-2 gap-1.5">
                 {bannerAssets.map((asset) => (
-                  <button
+                  <div
                     key={asset.id}
-                    onClick={() => selectBanner(asset.id)}
-                    className={`flex flex-col items-center rounded-lg overflow-hidden ring-2 transition-all ${
+                    className={`relative flex flex-col items-center rounded-lg overflow-hidden ring-2 transition-all group/card ${
                       activeBanner?.assetId === asset.id ? 'ring-[#b780ff]/60' : 'ring-transparent hover:ring-white/15'
                     }`}
                   >
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={asset.dataUrl} alt={asset.name} className="w-full h-14 object-contain bg-black/30" />
-                    <div className="w-full px-1.5 py-1 bg-[#202022] flex items-center justify-between">
-                      <span className="text-[9px] text-white/30 truncate">{asset.name}</span>
-                      {asset.alphaBounds && <span className="text-[9px] text-white/25 shrink-0 ml-1">α</span>}
-                    </div>
-                  </button>
+                    <button onClick={() => selectBanner(asset.id)} className="w-full">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={asset.dataUrl} alt={asset.name} className="w-full h-14 object-contain bg-black/30" />
+                      <div className="w-full px-1.5 py-1 bg-[#202022] flex items-center justify-between">
+                        <span className="text-[9px] text-white/30 truncate">{asset.name}</span>
+                        {asset.alphaBounds && <span className="text-[9px] text-white/25 shrink-0 ml-1">α</span>}
+                      </div>
+                    </button>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); removeBannerAsset(asset.id) }}
+                      className="absolute top-1 right-1 w-4 h-4 rounded-full bg-black/60 text-white/50 hover:text-white hover:bg-black/80 items-center justify-center hidden group-hover/card:flex transition-all"
+                    >
+                      <svg viewBox="0 0 10 10" className="w-2 h-2" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M2 2l6 6M8 2l-6 6"/></svg>
+                    </button>
+                  </div>
                 ))}
               </div>
               {bannerAssets.length === 0 && (
@@ -197,20 +205,27 @@ export default function LeftSidebar({ user }: Props) {
               )}
               <div className="grid grid-cols-2 gap-1.5">
                 {videoAssets.map((asset) => (
-                  <button
+                  <div
                     key={asset.id}
-                    onClick={() => selectVideo(asset.id)}
-                    className={`flex flex-col items-center rounded-lg overflow-hidden ring-2 transition-all ${
+                    className={`relative flex flex-col items-center rounded-lg overflow-hidden ring-2 transition-all group/card ${
                       activeVideo?.assetId === asset.id ? 'ring-[#b780ff]/60' : 'ring-transparent hover:ring-white/15'
                     }`}
                   >
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={asset.thumbnailUrl} alt={asset.name} className="w-full h-14 object-cover bg-black/30" />
-                    <div className="w-full px-1.5 py-1 bg-[#202022] flex items-center justify-between">
-                      <span className="text-[9px] text-white/30 truncate">{asset.name}</span>
-                      <span className="text-[9px] text-white/25 shrink-0 ml-1">{asset.duration.toFixed(1)}s</span>
-                    </div>
-                  </button>
+                    <button onClick={() => selectVideo(asset.id)} className="w-full">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={asset.thumbnailUrl} alt={asset.name} className="w-full h-14 object-cover bg-black/30" />
+                      <div className="w-full px-1.5 py-1 bg-[#202022] flex items-center justify-between">
+                        <span className="text-[9px] text-white/30 truncate">{asset.name}</span>
+                        <span className="text-[9px] text-white/25 shrink-0 ml-1">{asset.duration.toFixed(1)}s</span>
+                      </div>
+                    </button>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); removeVideoAsset(asset.id) }}
+                      className="absolute top-1 right-1 w-4 h-4 rounded-full bg-black/60 text-white/50 hover:text-white hover:bg-black/80 items-center justify-center hidden group-hover/card:flex transition-all"
+                    >
+                      <svg viewBox="0 0 10 10" className="w-2 h-2" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M2 2l6 6M8 2l-6 6"/></svg>
+                    </button>
+                  </div>
                 ))}
               </div>
               {videoAssets.length === 0 && (
