@@ -42,6 +42,29 @@ async function fetchToUint8Array(url: string): Promise<Uint8Array> {
   return new Uint8Array(await res.arrayBuffer())
 }
 
+/** ffmpeg FS에 이미 쓰여진 input.mp4에 오디오 스트림이 있는지 확인 */
+async function probeHasAudio(ffmpeg: import('@ffmpeg/ffmpeg').FFmpeg): Promise<boolean> {
+  const logs: string[] = []
+  const onLog = ({ message }: { message: string }) => logs.push(message)
+  ffmpeg.on('log', onLog)
+  try {
+    await ffmpeg.exec(['-i', 'input.mp4', '-f', 'null', '-'])
+  } catch { /* ffmpeg always exits non-zero for -f null probe */ }
+  ffmpeg.off('log', onLog)
+  return logs.some((l) => /Audio/.test(l))
+}
+
+/** atempo는 0.5~2.0 범위만 지원 — 범위 밖은 체이닝으로 처리 */
+function buildAtempoFilter(speed: number): string {
+  if (speed === 1) return ''
+  const steps: string[] = []
+  let s = speed
+  while (s > 2.0) { steps.push('atempo=2.0'); s /= 2.0 }
+  while (s < 0.5) { steps.push('atempo=0.5'); s /= 0.5 }
+  steps.push(`atempo=${s.toFixed(6)}`)
+  return steps.join(',') + ','
+}
+
 export default function ExportModal({ onClose }: Props) {
   const { activeVideo, activeBanner, videoAssets, bannerAssets, musicAssets, musicTrack, quality, sets } = useEditorStore()
 
@@ -89,14 +112,9 @@ export default function ExportModal({ onClose }: Props) {
   ): Promise<Blob> {
 
     const videoAsset = videoAssets.find((v) => v.id === video!.assetId)!
-    const written = writtenAssetsRef.current
 
-    const videoKey = `video:${videoAsset.id}`
-    if (!written.has(videoKey)) {
-      const videoData = await fetchToUint8Array(videoAsset.url)
-      await ffmpeg.writeFile('input.mp4', videoData)
-      written.add(videoKey)
-    }
+    const videoData = await fetchToUint8Array(videoAsset.url)
+    await ffmpeg.writeFile('input.mp4', videoData)
 
     const speed    = video!.speed
     const inPoint  = video!.inPoint
@@ -114,52 +132,58 @@ export default function ExportModal({ onClose }: Props) {
     const vidX  = Math.round(video!.x - safeW / 2)
     const vidY  = Math.round(video!.y - safeH / 2)
 
+    // 영상에 오디오 스트림이 있는지 확인
+    const hasAudio = await probeHasAudio(ffmpeg)
+
     const vSpeedFilter = speed !== 1 ? `setpts=${(1 / speed).toFixed(6)}*PTS,` : ''
 
-    // -i 앞에 -ss/-to를 두면 demuxer seek으로 오디오 스트림이 누락될 수 있으므로
-    // -i만 먼저 두고, filter_complex 안에서 trim으로 구간을 자름
-    const inputs: string[] = ['-i', 'input.mp4']
+    // -ss/-to를 input 앞에 두어 구간 seek (demuxer level, 빠르고 안정적)
+    const inputs: string[] = [
+      '-ss', String(inPoint),
+      '-to', String(outPoint),
+      '-i', 'input.mp4',
+    ]
     let bannerIdx = -1
     let musicIdx  = -1
+    let nullIdx   = -1  // anullsrc 인덱스
 
     if (bannerAsset) {
-      const bannerKey = `banner:${bannerAsset.id}`
-      if (!written.has(bannerKey)) {
-        const bannerData = await fetchToUint8Array(bannerAsset.dataUrl)
-        await ffmpeg.writeFile('banner.png', bannerData)
-        written.add(bannerKey)
-      }
+      const bannerData = await fetchToUint8Array(bannerAsset.dataUrl)
+      await ffmpeg.writeFile('banner.png', bannerData)
       inputs.push('-i', 'banner.png')
       bannerIdx = 1
     }
 
     const musicAsset = musicTrack ? musicAssets.find((m) => m.id === musicTrack.assetId) : null
     if (musicAsset) {
-      const musicKey = `music:${musicAsset.id}`
-      if (!written.has(musicKey)) {
-        const musicData = await fetchToUint8Array(musicAsset.url)
-        await ffmpeg.writeFile('bgm.mp3', musicData)
-        written.add(musicKey)
-      }
+      const musicData = await fetchToUint8Array(musicAsset.url)
+      await ffmpeg.writeFile('bgm.mp3', musicData)
       inputs.push('-stream_loop', '-1', '-i', 'bgm.mp3')
       musicIdx = bannerIdx >= 0 ? 2 : 1
     }
 
-    // 영상 구간 trim (filter_complex 안에서)
-    const vTrimFilter = `trim=start=${inPoint}:end=${outPoint},setpts=PTS-STARTPTS,`
-    const aTrimFilter = `atrim=start=${inPoint}:end=${outPoint},asetpts=PTS-STARTPTS,`
+    // 영상 오디오가 없으면 무음 소스 추가
+    if (!hasAudio) {
+      nullIdx = inputs.filter((a) => a === '-i').length
+      inputs.push('-f', 'lavfi', '-i', `anullsrc=r=44100:cl=stereo`)
+    }
+
+    const videoSrc  = hasAudio ? '[0:a]' : `[${nullIdx}:a]`
+
+    // atempo는 0.5~2.0 범위만 지원 — 범위 밖이면 체이닝
+    const aSpeedFilter = buildAtempoFilter(speed)
 
     let vf: string
     if (bannerIdx >= 0) {
       vf =
-        `[0:v]${vTrimFilter}${vSpeedFilter}scale=${safeW}:${safeH}[scaled];` +
+        `[0:v]${vSpeedFilter}scale=${safeW}:${safeH}[scaled];` +
         `color=black:size=${outW}x${outH}:rate=30[bg];` +
         `[bg][scaled]overlay=${vidX}:${vidY}[vid];` +
         `[${bannerIdx}:v]scale=${outW}:${outH}[banner];` +
         `[vid][banner]overlay=0:0[vout]`
     } else {
       vf =
-        `[0:v]${vTrimFilter}${vSpeedFilter}scale=${safeW}:${safeH}[scaled];` +
+        `[0:v]${vSpeedFilter}scale=${safeW}:${safeH}[scaled];` +
         `color=black:size=${outW}x${outH}:rate=30[bg];` +
         `[bg][scaled]overlay=${vidX}:${vidY}[vout]`
     }
@@ -169,18 +193,14 @@ export default function ExportModal({ onClose }: Props) {
     const maps: string[] = ['-map', '[vout]']
     let af: string
 
-    const aSpeedFilter = speed !== 1 ? `atempo=${speed.toFixed(6)},` : ''
-
     if (musicIdx >= 0) {
-      // 영상 원음 + BGM 믹스
       af =
-        `[0:a]${aTrimFilter}${aSpeedFilter}volume=${videoVol.toFixed(3)}[va];` +
+        `${videoSrc}${aSpeedFilter}volume=${videoVol.toFixed(3)}[va];` +
         `[${musicIdx}:a]volume=${musicVol.toFixed(3)}[ma];` +
         `[va][ma]amix=inputs=2:duration=first[aout]`
       maps.push('-map', '[aout]')
     } else {
-      // BGM 없음: 영상 원음만 출력
-      af = `[0:a]${aTrimFilter}${aSpeedFilter}volume=${videoVol.toFixed(3)}[aout]`
+      af = `${videoSrc}${aSpeedFilter}volume=${videoVol.toFixed(3)}[aout]`
       maps.push('-map', '[aout]')
     }
 
