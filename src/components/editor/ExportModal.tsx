@@ -222,7 +222,6 @@ export default function ExportModal({ onClose }: Props) {
     if (selectedIds.size === 0) return
     setIsRunning(true)
     measuredFactorRef.current = null
-    writtenAssetsRef.current = new Set()
 
     const selectedSets = Array.from(selectedIds)
       .map((id) => sets.find((s) => s.id === id))
@@ -242,13 +241,10 @@ export default function ExportModal({ onClose }: Props) {
       const { FFmpeg } = await import('@ffmpeg/ffmpeg')
       const { toBlobURL } = await import('@ffmpeg/util')
 
-      const ffmpeg = new FFmpeg()
-      ffmpeg.on('log', ({ message }) => console.log('[ffmpeg]', message))
+      // core/wasm URL은 한 번만 생성해 재사용
       const baseURL = 'https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd'
-      await ffmpeg.load({
-        coreURL: await toBlobURL(`${baseURL}/ffmpeg-core.js`, 'text/javascript'),
-        wasmURL: await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, 'application/wasm'),
-      })
+      const coreURL = await toBlobURL(`${baseURL}/ffmpeg-core.js`, 'text/javascript')
+      const wasmURL = await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, 'application/wasm')
 
       for (let i = 0; i < jobList.length; i++) {
         const job = jobList[i]
@@ -258,15 +254,20 @@ export default function ExportModal({ onClose }: Props) {
         updateJob(i, jobList, { status: 'processing', remainSec: null })
         const startTs = performance.now()
 
+        // 세트마다 새 ffmpeg 인스턴스 — FS 상태 오염 방지
+        const ffmpeg = new FFmpeg()
+        ffmpeg.on('log', ({ message }) => console.log('[ffmpeg]', message))
+        await ffmpeg.load({ coreURL, wasmURL })
+        writtenAssetsRef.current = new Set()
+
         try {
           if (!found.video) throw new Error('영상이 없습니다')
 
-          const filename = `out_${i}.mp4`
+          const filename = 'out.mp4'
 
           const onProgress = (ratio: number) => {
             const elapsed = (performance.now() - startTs) / 1000
             const p = Math.min(95, Math.round(ratio * 100))
-            // ratio 기반 남은 시간: 경과 / ratio = 전체 예상, 남은 = 전체 - 경과
             const remain = ratio > 0.01 ? Math.max(0, (elapsed / ratio) - elapsed) : null
             updateJob(i, jobList, { progress: p, remainSec: remain })
           }
@@ -288,8 +289,6 @@ export default function ExportModal({ onClose }: Props) {
           setTimeout(() => URL.revokeObjectURL(url), 5000)
 
           updateJob(i, jobList, { status: 'done', progress: 100, remainSec: null, totalSec: Math.round(elapsed) })
-
-          try { await ffmpeg.deleteFile(filename) } catch { /* ignore */ }
         } catch (err) {
           const msg = err instanceof Error ? err.message : String(err)
           console.error(`[export] set ${i} error:`, msg)
